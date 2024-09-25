@@ -1,6 +1,7 @@
 import { Type } from '@sinclair/typebox'
 import {
   ContestSchema,
+  ContestSeriesSchema,
   NewContestSchema,
   NewDomainSchema,
   NewProblemSchema,
@@ -198,7 +199,6 @@ async function domainProblemRoutes (problemRoutes: FastifyTypeBox): Promise<void
       onRequest: [userAuthHook, problemRoutes.auth([
         [hasDomainPrivilege(['problem.manage'])]
       ]) as any]
-
     },
     async (request, reply) => {
       const { problemId, domainId } = request.params
@@ -394,7 +394,7 @@ async function domainContestSeriesRoutes (seriesRoutes: FastifyTypeBox): Promise
       schema: {
         params: Type.Object({ domainId: Type.String() }),
         response: {
-          200: Type.Array(ContestSchema),
+          200: Type.Array(ContestSeriesSchema),
           400: badRequestSchema,
           401: unauthorizedSchema,
           403: forbiddenSchema
@@ -429,6 +429,10 @@ export async function domainRoutes (routes: FastifyTypeBox): Promise<void> {
     async (request, reply) => {
       const newDomain = request.body
       const { domainId } = await createDomain({ newDomain })
+      const userId = request.user!.id
+      const scopes = ["domain.manage", "contest.manage", "contest.read", "problem.manage", "problem.read", "problem.test"]; 
+      await addOrUpdateDomainMember({ domainId, userId, scopes })
+
       return await reply.status(201).send({ domainId })
     }
   )
@@ -449,7 +453,8 @@ export async function domainRoutes (routes: FastifyTypeBox): Promise<void> {
       const { domainId } = request.params
       const domain = await fetchDomain({ domainId })
       return domain
-    })
+    }
+  )
 
   routes.put(
     '/:domainId',

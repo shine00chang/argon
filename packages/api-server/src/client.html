@@ -1,0 +1,155 @@
+<h1> Argon Client </h1>
+
+<input type="text" id="name" placeholder="name" value="alvin"> <br>
+<input type="text" id="username" placeholder="username" value="alvin"> <br>
+<input type="text" id="password" placeholder="password" value="87654321"> <br>
+<button id="login">login</button>
+<button id="signup">signup</button>
+
+<p>UserID: <b id='userId'>NA</b> </p>
+<p>SessionID: <b id='sessionId'>NA</b> </p>
+
+
+<h2>Contests</h2>
+<button id='contest-get'>get</button> <br>
+<button id='contest-register'>register</button> <br>
+<div id='contest-list'> </div>
+
+<h2>Contest Problems</h2>
+<button id='contest-problem-get'>get</button> <br>
+<div id='contest-problem-list'> </div>
+
+<h2>Solution</h2>
+<input type="file" id="solution"> <br>
+<button id='solution-submit'>submit</button>
+
+<h2>Submissions</h2>
+<button id='submission-get'>get</button> <br>
+<div id='submissions-list'></div>
+
+<h2>Ranklist</h2>
+<button id='ranklist-get'>get</button> <br>
+<div id='ranklist-list'></div>
+
+
+
+<script>
+  const serverURL = 'http://localhost:8000';
+  let getUserId = _ => undefined;
+
+  const getProblemId = _ => document.querySelector('input[name="problem-radio"]:checked').value;
+  const getSeriesId = _ => document.querySelector('input[name="series-radio"]:checked').value;
+  const getContestId = _ => document.querySelector('input[name="contest-radio"]:checked').value;
+
+
+  document.getElementById('signup').onclick = _ => {
+
+    console.log('signup');
+
+    const body = {
+      name: document.getElementById('name').value,
+      username: document.getElementById('username').value,
+      password: document.getElementById('password').value,
+      email:"shine00chang@gmail.com",
+      year:"2025",
+      school:"Rock High School",
+      country:"USA",
+      region:"Pacific"
+    };
+
+    if (!body.name) return alert('no name');
+    if (!body.username) return alert('no username');
+    if (!body.password) return alert('no password');
+
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body)
+    };
+
+    fetch(serverURL + '/v1/users/', options) 
+      .then(response => response.json())
+      .then(response => console.log(response))
+      .catch(err => console.error(err));
+  }
+
+  document.getElementById('login').onclick = _ => {
+
+    console.log('login');
+
+    const body = {
+      usernameOrEmail: document.getElementById('username').value,
+      password: document.getElementById('password').value,
+    };
+
+    if (!body.usernameOrEmail) return alert('no username or email');
+    if (!body.password) return alert('no password');
+
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body)
+    };
+
+    fetch(serverURL + '/v1/sessions/', options)
+      .then(response => {console.log(response.headers); return response.json()})
+      .then(response => {
+        console.log(response)
+        document.getElementById('userId').innerText = response.userId;
+        document.getElementById('sessionId').innerText = response.sessionId;
+        getUserId = () => response.userId;
+      })
+      .catch(err => console.error(err));
+  }
+
+  document.getElementById('contest-get').onclick = async _ => {
+
+    console.log('contest-get');
+
+    const res = await fetch(serverURL + `/v1/contest-series/`)
+      .then(res => res.json())
+      .catch(console.error);
+
+    if (res.error)
+      return console.error(res.message);
+
+    let html = '';
+    for (const { name: series, contests } of res) {
+      for (const id of contests) {
+        const { name, published } = await fetch (serverURL + `/v1/contests/${id}`)
+          .then(res => res.json())
+          .catch(console.error);
+        
+        html += `
+          <div>
+          <input type='radio' name='contest-radio' value='${id}'>
+          <label for='${id}'><b>${name}</b> from <i>${series}</i> (${published}): ${id}</label>
+          </div>`
+      }
+    }
+    document.getElementById('contest-list').innerHTML = html;
+  }
+
+  document.getElementById('contest-problem-get').onclick = async _ => {
+
+    console.log('contest-problems-get');
+
+    const res = await fetch(serverURL + `/v1/contests/${getContestId()}/problems/`)
+      .then(res => res.json())
+      .catch(console.error);
+
+    if (res.error)
+      return console.error(res.message);
+
+    let html = '';
+    for (const { name, id } of res.problems) {
+      html += `<div>${name}: ${id}</div>`
+    }
+
+    document.getElementById('contest-problem-list').innerHTML = html;
+  }
+</script>

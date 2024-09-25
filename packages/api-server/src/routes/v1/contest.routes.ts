@@ -129,7 +129,8 @@ async function contestProblemRoutes (problemRoutes: FastifyTypeBox): Promise<voi
           400: badRequestSchema,
           401: unauthorizedSchema,
           403: forbiddenSchema,
-          404: notFoundSchema
+          404: notFoundSchema,
+          405: methodNotAllowedSchema
         }
       },
       onRequest: [userAuthHook, problemRoutes.auth([

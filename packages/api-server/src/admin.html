@@ -1,0 +1,450 @@
+<h1>Argon Admin</h1>
+
+<input type="text" id="name" placeholder="name" value="shine"> <br>
+<input type="text" id="username" placeholder="username" value="shine"> <br>
+<input type="text" id="password" placeholder="password" value="12345678"> <br>
+<button id="login">login</button>
+<button id="signup">signup</button>
+
+<p>UserID: <b id='userId'>NA</b> </p>
+<p>SessionID: <b id='sessionId'>NA</b> </p>
+
+
+<h2>Domains</h2>
+<input type="text" id="domain-name">
+<button id='domain-add'>add</button> <br>
+<button id='domain-get'>get</button> <br>
+
+<div id='domain-list'>
+</div>
+
+<h2>Problems</h2>
+<input type="text" id="problem-name" placeholder="name"><br>
+<input type="text" id="problem-context" placeholder="context"><br>
+<input type="text" id="problem-input" placeholder="input"><br>
+<input type="text" id="problem-output" placeholder="output"><br>
+<button id='problem-add'>add</button> <br>
+<button id='problem-get'>get</button> <br>
+
+<div id='problem-list'>
+</div>
+
+<h2>Series</h2>
+<input type="text" id="series-name" placeholder="name"><br>
+<button id='series-add'>add</button> <br>
+<button id='series-get'>get</button> <br>
+
+<div id='series-list'>
+</div>
+
+<h2>Contests</h2>
+<input type="text" id="contest-name" placeholder="name"><br>
+<input type="text" id="contest-path" placeholder="path"><br>
+<input type="number" id="contest-startTime" placeholder="startTime"><br>
+<input type="number" id="contest-endTime" placeholder="endTime"><br>
+<button id='contest-add'>add</button> <br>
+<button id='contest-add-problem'>add problem</button> <br>
+<button id='contest-get'>get</button> <br>
+
+<div id='contest-list'>
+</div>
+
+<h2>Contest Problems</h2>
+<button id='contest-problem-get'>get</button> <br>
+
+<div id='contest-problem-list'>
+</div>
+
+<h2>Publish</h2>
+<button id='contest-publish'>publish</button>
+
+<h2>Testcases</h2>
+<input type="file" id="testcase-input"> <br>
+<input type="file" id="testcase-output"> <br>
+<button id='testcase-upload'>upload</button>
+<button id='testcase-get'>get</button>
+<button id='testcase-delete' disabled>delete</button>
+
+<div id='testcase-list'>
+</div>
+
+<script>
+  const serverURL = 'http://localhost:8000';
+  const uploadURL = 'http://localhost:8001';
+  let getUserId = _ => undefined;
+
+  const getDomainId = _ => document.querySelector('input[name="domain-radio"]:checked').value;
+  const getProblemId = _ => document.querySelector('input[name="problem-radio"]:checked').value;
+  const getSeriesId = _ => document.querySelector('input[name="series-radio"]:checked').value;
+  const getContestId = _ => document.querySelector('input[name="contest-radio"]:checked').value;
+  const getTestcaseId = _ => document.querySelector('input[name="testcase-radio"]:checked').value;
+
+  document.getElementById('signup').onclick = _ => {
+
+    console.log('signup');
+
+    const body = {
+      name: document.getElementById('name').value,
+      username: document.getElementById('username').value,
+      password: document.getElementById('password').value,
+      email:"shine00chang@gmail.com",
+      year:"2025",
+      school:"Rock High School",
+      country:"USA",
+      region:"Pacific"
+    };
+
+    if (!body.name) return alert('no name');
+    if (!body.username) return alert('no username');
+    if (!body.password) return alert('no password');
+
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body)
+    };
+
+    fetch(serverURL + '/v1/users/', options) 
+      .then(response => response.json())
+      .then(response => console.log(response))
+      .catch(err => console.error(err));
+  }
+
+  document.getElementById('login').onclick = _ => {
+
+    console.log('login');
+
+    const body = {
+      usernameOrEmail: document.getElementById('username').value,
+      password: document.getElementById('password').value,
+    };
+
+    if (!body.usernameOrEmail) return alert('no username or email');
+    if (!body.password) return alert('no password');
+
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body)
+    };
+
+    fetch(serverURL + '/v1/sessions/', options)
+      .then(response => {console.log(response.headers); return response.json()})
+      .then(response => {
+        console.log(response)
+        document.getElementById('userId').innerText = response.userId;
+        document.getElementById('sessionId').innerText = response.sessionId;
+        getUserId = () => response.userId;
+      })
+      .catch(err => console.error(err));
+
+  }
+
+  document.getElementById('domain-add').onclick = _ => {
+
+    console.log('domain-add');
+
+    const body = {
+      name: document.getElementById('domain-name').value,
+      path: document.getElementById('domain-name').value,
+      description: 'testing domain.'
+    };
+
+    if (!body.name) return alert('no name');
+
+    const options = {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        cookie: document.cookie, 
+      },
+      body: JSON.stringify(body)
+    };
+
+    fetch(serverURL + '/v1/domains/', options)
+      .then(response => response.json())
+      .then(response => console.log(response))
+      .catch(err => console.error(err));
+  }
+
+  document.getElementById('domain-get').onclick = async _ => {
+
+    console.log('domain-get');
+
+    const res = await fetch(serverURL + `/v1/users/${getUserId()}/profiles/private`)
+      .then(res => res.json())
+      .catch(console.error);
+
+    let html = '';
+    for (const domainId of Object.keys(res.scopes)) {
+      const { name, id } = await fetch(serverURL + `/v1/domains/${domainId}`)
+        .then(res => res.json())
+        .catch(console.error);
+
+      html += `
+      <div>
+      <input type='radio' name='domain-radio' value='${id}'>
+      <label for='${id}'>${name}: ${id}</label>
+      </div>`
+    }
+
+    document.getElementById('domain-list').innerHTML = html;
+  }
+
+  document.getElementById('problem-add').onclick = async _ => {
+
+    console.log('problem-add');
+
+    const body = {
+      name: document.getElementById('problem-name').value,
+      context: document.getElementById('problem-context').value,
+      inputFormat: document.getElementById('problem-input').value,
+      outputFormat: document.getElementById('problem-output').value,
+      constraints: {
+        "memory":256,
+        "time":2000,
+        "wallTime":200,
+        "totalStorage":10,
+        "processes":1
+      },
+      samples: []
+    };
+
+    const options = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    };
+
+    fetch(serverURL + `/v1/domains/${getDomainId()}/problems`, options)
+      .then(res => res.json())
+      .then(res => console.log(res))
+      .catch(console.error);
+  }
+
+  document.getElementById('problem-get').onclick = async _ => {
+
+    console.log('problem-get');
+
+    const res = await fetch(serverURL + `/v1/domains/${getDomainId()}/problems/`)
+      .then(res => res.json())
+      .catch(console.error);
+
+    if (res.error)
+      return console.error(res.message);
+
+    let html = '';
+    for (const { name, id } of res) {
+      html += `
+      <div>
+      <input type='radio' name='problem-radio' value='${id}'>
+      <label for='${id}'>${name}: ${id}</label>
+      </div>`
+    }
+
+    document.getElementById('problem-list').innerHTML = html;
+  }
+
+  document.getElementById('series-add').onclick = async _ => {
+
+    console.log('series-add');
+
+    const body = {
+      name: document.getElementById('series-name').value,
+    };
+
+    const options = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    };
+
+    fetch(serverURL + `/v1/domains/${getDomainId()}/contest-series`, options)
+      .then(res => res.json())
+      .then(res => console.log(res))
+      .catch(console.error);
+  }
+
+  document.getElementById('series-get').onclick = async _ => {
+
+    console.log('series-get');
+
+    const res = await fetch(serverURL + `/v1/domains/${getDomainId()}/contest-series/`)
+      .then(res => res.json())
+      .catch(console.error);
+
+    if (res.error)
+      return console.error(res.message);
+
+    let html = '';
+    for (const { name, id, published } of res) {
+      html += `
+      <div>
+      <input type='radio' name='series-radio' value='${id}'>
+      <label for='${id}'>${name}: ${id}</label>
+      </div>`
+    }
+
+    document.getElementById('series-list').innerHTML = html;
+  }
+
+  document.getElementById('contest-add').onclick = async _ => {
+
+    console.log('contest-add');
+
+    const body = {
+      name: document.getElementById('contest-name').value,
+	    path: document.getElementById('contest-path').value,
+	    handle: document.getElementById('contest-path').value,
+	    startTime: document.getElementById('contest-startTime').value,
+	    endTime: document.getElementById('contest-endTime').value,
+	    description: "no description",
+	    teamSize: 1,
+	    seriesId: getSeriesId()
+    };
+
+    const options = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    };
+
+    fetch(serverURL + `/v1/domains/${getDomainId()}/contests`, options)
+      .then(res => res.json())
+      .then(res => console.log(res))
+      .catch(console.error);
+  }
+
+  document.getElementById('contest-add-problem').onclick = async _ => {
+
+    console.log('contest-add-problem');
+
+    const options = { method: 'PUT' };
+
+    fetch(serverURL + `/v1/contests/${getContestId()}/problems/${getProblemId()}`, options)
+      .then(res => res.json())
+      .then(res => console.log(res))
+      .catch(console.error);
+  }
+
+  document.getElementById('contest-get').onclick = async _ => {
+
+    console.log('contest-get');
+
+    const res = await fetch(serverURL + `/v1/domains/${getDomainId()}/contests/`)
+      .then(res => res.json())
+      .catch(console.error);
+
+    if (res.error)
+      return console.error(res.message);
+
+    let html = '';
+    for (const { name, id, published } of res) {
+      html += `
+      <div>
+      <input type='radio' name='contest-radio' value='${id}'>
+      <label for='${id}'>${name}: ${id}: ${published}</label>
+      </div>`
+    }
+
+    document.getElementById('contest-list').innerHTML = html;
+  }
+
+  document.getElementById('contest-publish').onclick = async _ => {
+
+    console.log('contest-publish');
+
+    const options = { method: 'POST' };
+
+    const res = await fetch(serverURL + `/v1/contests/${getContestId()}/publish`, options)
+
+    if (res.status !== 200) return alert('published');
+    console.log(await res.json());
+  }
+
+  document.getElementById('contest-problem-get').onclick = async _ => {
+
+    console.log('contest-problems-get');
+
+    const res = await fetch(serverURL + `/v1/contests/${getContestId()}/problems/`)
+      .then(res => res.json())
+      .catch(console.error);
+
+    if (res.error)
+      return console.error(res.message);
+
+    let html = '';
+    for (const { name, id } of res.problems) {
+      html += `<div>${name}: ${id}</div>`
+    }
+
+    document.getElementById('contest-problem-list').innerHTML = html;
+  }
+
+  document.getElementById('testcase-upload').onclick = async _ => {
+
+    console.log('testcase-upload');
+    
+    const { uploadId } = await fetch(serverURL + `/v1/domains/${getDomainId()}/problems/${getProblemId()}/upload-session`)
+      .then(res => res.json())
+      .catch(console.error);
+
+    const formData = new FormData();
+    formData.append('input', document.getElementById('testcase-input').files[0]);
+    formData.append('output', document.getElementById('testcase-output').files[0]);
+
+    const [ input, output ] = await fetch(uploadURL + `/testcases/${uploadId}`, {
+      method: "POST",
+      body: formData 
+    })
+      .then(res => res.json())
+      .catch(console.error)
+
+    if (!input || !output) return;
+
+    console.log(input, output);
+    // get problem
+    const problem = await fetch(serverURL + `/v1/domains/${getDomainId()}/problems/${getProblemId()}`)
+      .then(res => res.json())
+      .catch(console.error);
+
+    // update & put problem
+    if (!problem.testcases)
+      problem.testcases = [];
+    problem.testcases.push({
+      input,
+      output,
+      points: 1
+    });
+    console.log(problem);
+
+    await fetch(serverURL + `/v1/domains/${getDomainId()}/problems/${getProblemId()}`, {
+      method: "PUT",
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(problem)
+    })
+      .then(res => res.json())
+      .catch(console.error)
+  }
+
+  document.getElementById('testcase-get').onclick = async _ => {
+
+    console.log('testcase-get');
+
+    const problem = await fetch(serverURL + `/v1/domains/${getDomainId()}/problems/${getProblemId()}`)
+      .then(res => res.json())
+      .catch(console.error);    
+
+    let html = '';
+    for (const { input, output, points } of problem.testcases) {
+      html += `<div>${input.name} => ${output.name}: ${points}pts</div>`
+    }
+
+    document.getElementById('testcase-list').innerHTML = html;
+  } 
+</script>

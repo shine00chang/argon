@@ -2,6 +2,7 @@ import { fastify } from 'fastify'
 
 import fastifyHttpErrorsEnhanced from '@chenhongqiao/fastify-http-errors-enhanced'
 import fastifyAuth from '@fastify/auth'
+import fastifyCors from '@fastify/cors'
 
 import { testcaseRoutes } from './routes/testcase.routes.js'
 import { heartbeatRoutes } from './routes/heartbeat.routes.js'
@@ -41,6 +42,11 @@ export async function startUploadServer (): Promise<void> {
   })
   await app.register(fastifyAuth)
   await app.register(fastifySensible)
+  await app.register(fastifyCors, {
+    origin: [/\.teamscode\.org$/, /\.argoncs\.io$/, 'http://localhost:3000', 'http://localhost:8000'],
+    allowedHeaders: ['Content-Type', 'Set-Cookie'],
+    credentials: true
+  })
 
   await app.register(testcaseRoutes, { prefix: '/testcases' })
   await app.register(heartbeatRoutes, { prefix: '/heartbeat' })
