@@ -19,7 +19,9 @@ export async function registerUser ({ newUser }: { newUser: NewUser }): Promise<
   const user: User = {
     id: userId,
     name: newUser.name,
-    newEmail: newUser.email,
+// TODO: Temporarily disable email validation
+//    newEmail: newUser.email,
+    email: newUser.email,
     credential: {
       salt,
       hash

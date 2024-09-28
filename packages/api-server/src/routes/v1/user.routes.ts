@@ -219,8 +219,7 @@ async function userInviteRoutes (inviteRoutes: FastifyTypeBox): Promise<void> {
 }
 
 export async function userRoutes (routes: FastifyTypeBox): Promise<void> {
-  /* Create user
-   */
+  /* Update User */
   routes.post(
     '/',
     {

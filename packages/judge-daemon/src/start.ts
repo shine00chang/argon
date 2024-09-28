@@ -28,7 +28,8 @@ export async function startJudger (): Promise<void> {
   assert(process.env.MINIO_URL != null)
   await connectMinIO(process.env.MINIO_URL)
 
-  await prepareStorage({ dir: '/argon-cache' })
+  console.log('CWD: ', process.cwd()); 
+  await prepareStorage({ dir: process.cwd() + '/argon-cache' })
 
   const cores = os.cpus().length
 

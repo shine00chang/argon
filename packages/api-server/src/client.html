@@ -12,20 +12,29 @@
 
 <h2>Contests</h2>
 <button id='contest-get'>get</button> <br>
-<button id='contest-register'>register</button> <br>
 <div id='contest-list'> </div>
 
-<h2>Contest Problems</h2>
-<button id='contest-problem-get'>get</button> <br>
-<div id='contest-problem-list'> </div>
+<h2>Teams</h2>
+<input id='team-name' type='text'> <br>
+<button id='team-make'>make</button> <br>
+<button id='team-get'>get</button> <br>
+<div id='team-list'></div>
 
-<h2>Solution</h2>
-<input type="file" id="solution"> <br>
-<button id='solution-submit'>submit</button>
+<h2>Problems</h2>
+<button id='problem-get'>get</button> <br>
+<div id='problem-list'> </div>
 
 <h2>Submissions</h2>
+<label for="lang">Language:</label>
+<select name="lang" id="submission-lang" value="C++17">
+   <option value="C">C</option>
+   <option value="C++">C++</option>
+   <option value="Python">Python</option>
+</select> <br>
+<input type="file" id="submission-file"> <br>
+<button id='submission-submit'>submit</button> <br>
 <button id='submission-get'>get</button> <br>
-<div id='submissions-list'></div>
+<div id='submission-list'></div>
 
 <h2>Ranklist</h2>
 <button id='ranklist-get'>get</button> <br>
@@ -134,9 +143,47 @@
     document.getElementById('contest-list').innerHTML = html;
   }
 
-  document.getElementById('contest-problem-get').onclick = async _ => {
+  document.getElementById('team-make').onclick = async _ => {
 
-    console.log('contest-problems-get');
+    console.log('team-make');
+
+    const body = { name: document.getElementById('team-name').value };
+
+    if (!body.name) return alert('no team name');
+
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body)
+    };
+
+    const { teamId } = await fetch(serverURL + `/v1/contests/${getContestId()}/teams/`, options)
+      .then(res => res.json())
+      .catch(console.error);
+  }
+
+  document.getElementById('team-get').onclick = async _ => {
+
+    console.log('team-get');
+
+    const { teams } = await fetch(serverURL + `/v1/users/${getUserId()}/profiles/private`)
+      .then(res => res.json())
+      .catch(console.error);
+
+    console.log(teams);
+    let html = '';
+    for (const [contestId, teamId] of Object.entries(teams)) {
+      html += `<div><b>${teamId}</b>: ${contestId}</div>`
+    }
+
+    document.getElementById('team-list').innerHTML = html;
+  }
+
+  document.getElementById('problem-get').onclick = async _ => {
+
+    console.log('problems-get');
 
     const res = await fetch(serverURL + `/v1/contests/${getContestId()}/problems/`)
       .then(res => res.json())
@@ -147,9 +194,75 @@
 
     let html = '';
     for (const { name, id } of res.problems) {
-      html += `<div>${name}: ${id}</div>`
+      html += ` 
+      <div>
+      <input type='radio' name='problem-radio' value='${id}'>
+      <label for='${id}'>${name}: ${id}</label>
+      </div>`
     }
 
-    document.getElementById('contest-problem-list').innerHTML = html;
+    document.getElementById('problem-list').innerHTML = html;
+  }
+
+  document.getElementById('submission-submit').onclick = async _ => {
+
+    console.log('submission-submit');
+
+    const file = document.getElementById('submission-file').files[0];
+    if (!file) return alert('no file selected');
+
+    const body = { 
+      language: document.getElementById('submission-lang').value,
+      source: await file.text()
+    };
+
+    if (!body.language) return alert('no language');
+    if (!body.source) return alert('no source, error on reading file');
+
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body)
+    };
+
+    const { teamId } = await fetch(serverURL + `/v1/contests/${getContestId()}/problems/${getProblemId()}/submissions`, options)
+      .then(res => res.json())
+      .catch(console.error);
+  }
+
+  document.getElementById('submission-get').onclick = async _ => {
+
+    console.log('submission-get');
+
+    const submissions = await fetch(serverURL + `/v1/users/${getUserId()}/submissions`)
+      .then(res => res.json())
+      .catch(console.error);
+
+    let html = '';
+    for (const { problemId, createdAt, status, score } of submissions) {
+      html += `
+      <div>${problemId} @ ${createdAt}: <b>${status}</b> => ${score ? score : '...'}</div>`
+    }
+
+    document.getElementById('submission-list').innerHTML = html;
+  }
+
+  document.getElementById('ranklist-get').onclick = async _ => {
+
+    console.log('ranklist-get');
+
+    const list = await fetch(serverURL + `/v1/contests/${getContestId()}/ranklist`)
+      .then(res => res.json())
+      .catch(console.error);
+
+    let html = '';
+    for (const { id, totalScore: score } of list) {
+      html += `
+      <div>${id}: <b>${score}</b></div>`
+    }
+
+    document.getElementById('ranklist-list').innerHTML = html;
   }
 </script>
