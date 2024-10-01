@@ -43,7 +43,7 @@ export async function startUploadServer (): Promise<void> {
   await app.register(fastifyAuth)
   await app.register(fastifySensible)
   await app.register(fastifyCors, {
-    origin: [/\.teamscode\.org$/, /\.argoncs\.io$/, 'http://localhost:3000', 'http://localhost:8000'],
+    origin: [/\.teamscode\.org$/, /\.argoncs\.io$/, 'http://localhost:3000', 'http://localhost:8000', 'http://13.93.218.61:8000'],
     allowedHeaders: ['Content-Type', 'Set-Cookie'],
     credentials: true
   })

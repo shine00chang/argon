@@ -11,19 +11,23 @@ import {
 
 import { fetchBinary, fetchTestcase } from './storage.services.js'
 
-export async function gradeSubmission (
-  { task, boxId }: { task: GradingTask, boxId: number }): Promise<GradingResult> {
+export async function gradeSubmission ({ task, boxId }: { task: GradingTask, boxId: number }): Promise<GradingResult> {
+
   const workDir = `/var/local/lib/isolate/${boxId}/box`
   const config = languageConfigs[task.language]
+  const binaryPath = path.join(workDir, config.binaryFile)
+  const inputPath = path.join(workDir, 'in.txt')
+  const answerPath = path.join(workDir, 'ans.txt')
 
-  await fetchBinary({ objectName: task.submissionId, destPath: path.join(workDir, config.binaryFile) })
-
-  await fetchTestcase({ objectName: task.testcase.input.objectName, versionId: task.testcase.input.versionId, destPath: path.join(workDir, 'in.txt') })
-
+  await fetchBinary({ objectName: task.submissionId, destPath: binaryPath })
+  await fetchTestcase({ objectName: task.testcase.input.objectName, versionId: task.testcase.input.versionId, destPath: inputPath })
+  await fetchTestcase({ objectName: task.testcase.output.objectName, versionId: task.testcase.output.versionId, destPath: answerPath })
   await makeExecutable(path.join(workDir, config.binaryFile))
 
   let command = config.executeCommand
   command = command.replaceAll('{binary_path}', config.binaryFile)
+
+  console.log('cmd: ', command);
   const sandboxResult = await runInSandbox(
     {
       task: {
@@ -34,9 +38,9 @@ export async function gradeSubmission (
       },
       boxId
     })
+  //return  new Promise((resolve, reject) => resolve({ message: '', status: GradingStatus.Accepted, memory: 1, time: 1, wallTime: 1}));
+  
   if (sandboxResult.status === SandboxStatus.Succeeded) {
-    const answerPath = `/var/local/lib/isolate/${boxId}/ans.txt`
-    await fetchTestcase({ objectName: task.testcase.output.objectName, versionId: task.testcase.output.versionId, destPath: answerPath })
     const { time, wallTime, memory } = sandboxResult
     try {
       await exec(`diff -Z -B ${answerPath} ${path.join(workDir, 'out.txt')}`)

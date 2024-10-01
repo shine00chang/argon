@@ -12,7 +12,8 @@
   },
   "scripts": {
     "prepack": "tsc --build .",
-    "dev": "yarn prepack && node dist/src/dev.js"
+    "runDev": "bash -c 'source ../../set-env.sh && node dist/src/dev.js'",
+    "dev": "yarn prepack && yarn runDev"
   },
   "devDependencies": {
     "typescript": "^5.3.3"

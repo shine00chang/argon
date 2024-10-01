@@ -19,6 +19,7 @@ export async function startHandler (): Promise<void> {
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   await rabbitMQ.consume(judgerResultsQueue, async (message) => {
+    console.log('judger result queue consumed');
     if (message != null) {
       try {
         const resultMessage: CompilingResultMessage | GradingResultMessage = JSON.parse(message.content.toString())
@@ -41,6 +42,7 @@ export async function startHandler (): Promise<void> {
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   await rabbitMQ.consume(deadResultsQueue, async (message) => {
+    console.log('dead results queue consumed')
     if (message != null) {
       try {
         const letter: CompilingResultMessage | GradingResultMessage = JSON.parse(message.content.toString())
@@ -56,6 +58,7 @@ export async function startHandler (): Promise<void> {
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   await rabbitMQ.consume(deadTasksQueue, async (message) => {
+    console.log('dead tasks queue consumed')
     if (message != null) {
       try {
         const letter: CompilingTask | GradingTask = JSON.parse(message.content.toString())
@@ -67,4 +70,6 @@ export async function startHandler (): Promise<void> {
       }
     }
   })
+
+  console.log('started')
 }

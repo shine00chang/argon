@@ -1,6 +1,7 @@
 <h1> Argon Client </h1>
 
 <input type="text" id="name" placeholder="name" value="alvin"> <br>
+<input type="text" id="email" placeholder="email"> <br>
 <input type="text" id="username" placeholder="username" value="alvin"> <br>
 <input type="text" id="password" placeholder="password" value="87654321"> <br>
 <button id="login">login</button>
@@ -43,7 +44,6 @@
 
 
 <script>
-  const serverURL = 'http://localhost:8000';
   let getUserId = _ => undefined;
 
   const getProblemId = _ => document.querySelector('input[name="problem-radio"]:checked').value;
@@ -59,7 +59,7 @@
       name: document.getElementById('name').value,
       username: document.getElementById('username').value,
       password: document.getElementById('password').value,
-      email:"shine00chang@gmail.com",
+      email:document.getElementById('email').value,
       year:"2025",
       school:"Rock High School",
       country:"USA",
@@ -67,6 +67,7 @@
     };
 
     if (!body.name) return alert('no name');
+    if (!body.email) return alert('no email');
     if (!body.username) return alert('no username');
     if (!body.password) return alert('no password');
 
@@ -78,7 +79,7 @@
       body: JSON.stringify(body)
     };
 
-    fetch(serverURL + '/v1/users/', options) 
+    fetch('/v1/users/', options) 
       .then(response => response.json())
       .then(response => console.log(response))
       .catch(err => console.error(err));
@@ -104,7 +105,7 @@
       body: JSON.stringify(body)
     };
 
-    fetch(serverURL + '/v1/sessions/', options)
+    fetch('/v1/sessions/', options)
       .then(response => {console.log(response.headers); return response.json()})
       .then(response => {
         console.log(response)
@@ -119,7 +120,7 @@
 
     console.log('contest-get');
 
-    const res = await fetch(serverURL + `/v1/contest-series/`)
+    const res = await fetch(`/v1/contest-series/`)
       .then(res => res.json())
       .catch(console.error);
 
@@ -129,7 +130,7 @@
     let html = '';
     for (const { name: series, contests } of res) {
       for (const id of contests) {
-        const { name, published } = await fetch (serverURL + `/v1/contests/${id}`)
+        const { name, published } = await fetch (`/v1/contests/${id}`)
           .then(res => res.json())
           .catch(console.error);
         
@@ -159,7 +160,7 @@
       body: JSON.stringify(body)
     };
 
-    const { teamId } = await fetch(serverURL + `/v1/contests/${getContestId()}/teams/`, options)
+    const { teamId } = await fetch(`/v1/contests/${getContestId()}/teams/`, options)
       .then(res => res.json())
       .catch(console.error);
   }
@@ -168,7 +169,7 @@
 
     console.log('team-get');
 
-    const { teams } = await fetch(serverURL + `/v1/users/${getUserId()}/profiles/private`)
+    const { teams } = await fetch(`/v1/users/${getUserId()}/profiles/private`)
       .then(res => res.json())
       .catch(console.error);
 
@@ -185,7 +186,7 @@
 
     console.log('problems-get');
 
-    const res = await fetch(serverURL + `/v1/contests/${getContestId()}/problems/`)
+    const res = await fetch(`/v1/contests/${getContestId()}/problems/`)
       .then(res => res.json())
       .catch(console.error);
 
@@ -227,7 +228,7 @@
       body: JSON.stringify(body)
     };
 
-    const { teamId } = await fetch(serverURL + `/v1/contests/${getContestId()}/problems/${getProblemId()}/submissions`, options)
+    const { teamId } = await fetch(`/v1/contests/${getContestId()}/problems/${getProblemId()}/submissions`, options)
       .then(res => res.json())
       .catch(console.error);
   }
@@ -236,14 +237,14 @@
 
     console.log('submission-get');
 
-    const submissions = await fetch(serverURL + `/v1/users/${getUserId()}/submissions`)
+    const submissions = await fetch(`/v1/users/${getUserId()}/submissions`)
       .then(res => res.json())
       .catch(console.error);
 
     let html = '';
     for (const { problemId, createdAt, status, score } of submissions) {
       html += `
-      <div>${problemId} @ ${createdAt}: <b>${status}</b> => ${score ? score : '...'}</div>`
+      <div>${problemId} @ ${createdAt}: <b>${status}</b> => ${score !== undefined ? score : '...'}</div>`
     }
 
     document.getElementById('submission-list').innerHTML = html;
@@ -253,7 +254,7 @@
 
     console.log('ranklist-get');
 
-    const list = await fetch(serverURL + `/v1/contests/${getContestId()}/ranklist`)
+    const list = await fetch(`/v1/contests/${getContestId()}/ranklist`)
       .then(res => res.json())
       .catch(console.error);
 

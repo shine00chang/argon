@@ -1,6 +1,7 @@
 <h1>Argon Admin</h1>
 
 <input type="text" id="name" placeholder="name" value="shine"> <br>
+<input type="text" id="email" placeholder="email"> <br>
 <input type="text" id="username" placeholder="username" value="shine"> <br>
 <input type="text" id="password" placeholder="password" value="12345678"> <br>
 <button id="login">login</button>
@@ -69,8 +70,7 @@
 </div>
 
 <script>
-  const serverURL = 'http://localhost:8000';
-  const uploadURL = 'http://localhost:8001';
+  const uploadURL = 'http://13.93.218.61:8001';
   let getUserId = _ => undefined;
 
   const getDomainId = _ => document.querySelector('input[name="domain-radio"]:checked').value;
@@ -85,9 +85,9 @@
 
     const body = {
       name: document.getElementById('name').value,
+      email:document.getElementById('email').value,
       username: document.getElementById('username').value,
       password: document.getElementById('password').value,
-      email:"shine00chang@gmail.com",
       year:"2025",
       school:"Rock High School",
       country:"USA",
@@ -95,6 +95,7 @@
     };
 
     if (!body.name) return alert('no name');
+    if (!body.email) return alert('no email');
     if (!body.username) return alert('no username');
     if (!body.password) return alert('no password');
 
@@ -106,7 +107,7 @@
       body: JSON.stringify(body)
     };
 
-    fetch(serverURL + '/v1/users/', options) 
+    fetch( '/v1/users/', options) 
       .then(response => response.json())
       .then(response => console.log(response))
       .catch(err => console.error(err));
@@ -132,7 +133,7 @@
       body: JSON.stringify(body)
     };
 
-    fetch(serverURL + '/v1/sessions/', options)
+    fetch('/v1/sessions/', options)
       .then(response => {console.log(response.headers); return response.json()})
       .then(response => {
         console.log(response)
@@ -166,7 +167,7 @@
       body: JSON.stringify(body)
     };
 
-    fetch(serverURL + '/v1/domains/', options)
+    fetch('/v1/domains/', options)
       .then(response => response.json())
       .then(response => console.log(response))
       .catch(err => console.error(err));
@@ -176,13 +177,13 @@
 
     console.log('domain-get');
 
-    const res = await fetch(serverURL + `/v1/users/${getUserId()}/profiles/private`)
+    const res = await fetch(`/v1/users/${getUserId()}/profiles/private`)
       .then(res => res.json())
       .catch(console.error);
 
     let html = '';
     for (const domainId of Object.keys(res.scopes)) {
-      const { name, id } = await fetch(serverURL + `/v1/domains/${domainId}`)
+      const { name, id } = await fetch(`/v1/domains/${domainId}`)
         .then(res => res.json())
         .catch(console.error);
 
@@ -215,13 +216,16 @@
       samples: []
     };
 
+    if (!body.name || !body.context || !body.inputFormat || !body.outputFormat)
+      return alert('unfilled fields')
+
     const options = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     };
 
-    fetch(serverURL + `/v1/domains/${getDomainId()}/problems`, options)
+    fetch(`/v1/domains/${getDomainId()}/problems`, options)
       .then(res => res.json())
       .then(res => console.log(res))
       .catch(console.error);
@@ -231,7 +235,7 @@
 
     console.log('problem-get');
 
-    const res = await fetch(serverURL + `/v1/domains/${getDomainId()}/problems/`)
+    const res = await fetch(`/v1/domains/${getDomainId()}/problems/`)
       .then(res => res.json())
       .catch(console.error);
 
@@ -264,7 +268,7 @@
       body: JSON.stringify(body)
     };
 
-    fetch(serverURL + `/v1/domains/${getDomainId()}/contest-series`, options)
+    fetch(`/v1/domains/${getDomainId()}/contest-series`, options)
       .then(res => res.json())
       .then(res => console.log(res))
       .catch(console.error);
@@ -274,7 +278,7 @@
 
     console.log('series-get');
 
-    const res = await fetch(serverURL + `/v1/domains/${getDomainId()}/contest-series/`)
+    const res = await fetch( `/v1/domains/${getDomainId()}/contest-series/`)
       .then(res => res.json())
       .catch(console.error);
 
@@ -314,7 +318,7 @@
       body: JSON.stringify(body)
     };
 
-    fetch(serverURL + `/v1/domains/${getDomainId()}/contests`, options)
+    fetch(`/v1/domains/${getDomainId()}/contests`, options)
       .then(res => res.json())
       .then(res => console.log(res))
       .catch(console.error);
@@ -326,7 +330,7 @@
 
     const options = { method: 'PUT' };
 
-    fetch(serverURL + `/v1/contests/${getContestId()}/problems/${getProblemId()}`, options)
+    fetch(`/v1/contests/${getContestId()}/problems/${getProblemId()}`, options)
       .then(res => res.json())
       .then(res => console.log(res))
       .catch(console.error);
@@ -336,7 +340,7 @@
 
     console.log('contest-get');
 
-    const res = await fetch(serverURL + `/v1/domains/${getDomainId()}/contests/`)
+    const res = await fetch(`/v1/domains/${getDomainId()}/contests/`)
       .then(res => res.json())
       .catch(console.error);
 
@@ -361,7 +365,7 @@
 
     const options = { method: 'POST' };
 
-    const res = await fetch(serverURL + `/v1/contests/${getContestId()}/publish`, options)
+    const res = await fetch(`/v1/contests/${getContestId()}/publish`, options)
 
     if (res.status !== 200) return alert('published');
     console.log(await res.json());
@@ -371,7 +375,7 @@
 
     console.log('contest-problems-get');
 
-    const res = await fetch(serverURL + `/v1/contests/${getContestId()}/problems/`)
+    const res = await fetch(`/v1/contests/${getContestId()}/problems/`)
       .then(res => res.json())
       .catch(console.error);
 
@@ -390,26 +394,30 @@
 
     console.log('testcase-upload');
     
-    const { uploadId } = await fetch(serverURL + `/v1/domains/${getDomainId()}/problems/${getProblemId()}/upload-session`)
+    const { uploadId } = await fetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}/upload-session`)
       .then(res => res.json())
       .catch(console.error);
+
+    if (!document.getElementById('testcase-input').files[0] || !document.getElementById('testcase-output').files[0])
+      return alert('files not selected');
 
     const formData = new FormData();
     formData.append('input', document.getElementById('testcase-input').files[0]);
     formData.append('output', document.getElementById('testcase-output').files[0]);
 
-    const [ input, output ] = await fetch(uploadURL + `/testcases/${uploadId}`, {
+    const res = await fetch(uploadURL + `/testcases/${uploadId}`, {
       method: "POST",
       body: formData 
     })
       .then(res => res.json())
       .catch(console.error)
 
-    if (!input || !output) return;
+    if (!res) return alert('no response');
+    const [ input, output ] = res;
 
     console.log(input, output);
     // get problem
-    const problem = await fetch(serverURL + `/v1/domains/${getDomainId()}/problems/${getProblemId()}`)
+    const problem = await fetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}`)
       .then(res => res.json())
       .catch(console.error);
 
@@ -423,7 +431,7 @@
     });
     console.log(problem);
 
-    await fetch(serverURL + `/v1/domains/${getDomainId()}/problems/${getProblemId()}`, {
+    await fetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}`, {
       method: "PUT",
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(problem)
@@ -436,7 +444,7 @@
 
     console.log('testcase-get');
 
-    const problem = await fetch(serverURL + `/v1/domains/${getDomainId()}/problems/${getProblemId()}`)
+    const problem = await fetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}`)
       .then(res => res.json())
       .catch(console.error);    
 
