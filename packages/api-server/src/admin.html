@@ -1,3 +1,62 @@
+<head>
+  <link href='https://fonts.googleapis.com/css?family=Poppins' rel='stylesheet'>
+  <style> 
+    body{
+      margin:40px auto;max-width:700px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;
+      font-family: 'Poppins'
+    }
+    h1,h2,h3{line-height:1.2}
+    input,div,button { margin: 0.2rem }
+    input {
+      padding: 5px 12px;
+      font-size: 14px;
+      line-height: 20px;
+      color: #24292e;
+      vertical-align: middle;
+      background-color: #ffffff;
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      border: 1px solid #e1e4e8;
+      border-radius: 6px;
+      outline: none;
+      box-shadow: rgba(225, 228, 232, 0.2) 0px 1px 0px 0px inset;
+      :focus{
+          border-color: #0366d6;
+          outline: none;
+          box-shadow: rgba(3, 102, 214, 0.3) 0px 0px 0px 3px;
+      }
+    }
+    button {
+      display: inline-block;
+      outline: 0;
+      cursor: pointer;
+      padding: 5px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 20px;
+      vertical-align: middle;
+      border: 1px solid;
+      border-radius: 6px;
+      color: #24292e;
+      background-color: #fafbfc;
+      border-color: #1b1f2326;
+      box-shadow: rgba(27, 31, 35, 0.04) 0px 1px 0px 0px, rgba(255, 255, 255, 0.25) 0px 1px 0px 0px inset;
+      transition: 0.2s cubic-bezier(0.3, 0, 0.5, 1);
+      transition-property: color, background-color, border-color;
+      :hover {
+          background-color: #f3f4f6;
+          border-color: #1b1f2326;
+          transition-duration: 0.1s;
+      }
+    }
+
+    button:disabled {
+      color: #ccc
+    }
+
+  </style>
+</head>
+
 <h1>Argon Admin</h1>
 
 <input type="text" id="name" placeholder="name" value="shine"> <br>
@@ -71,23 +130,41 @@
 
 <script>
   const uploadURL = 'http://13.93.218.61:8001';
+
   let getUserId = _ => undefined;
 
-  const getDomainId = _ => document.querySelector('input[name="domain-radio"]:checked').value;
-  const getProblemId = _ => document.querySelector('input[name="problem-radio"]:checked').value;
-  const getSeriesId = _ => document.querySelector('input[name="series-radio"]:checked').value;
-  const getContestId = _ => document.querySelector('input[name="contest-radio"]:checked').value;
-  const getTestcaseId = _ => document.querySelector('input[name="testcase-radio"]:checked').value;
+  const getDomainId = _ => {let e = document.querySelector('input[name="domain-radio"]:checked'); return e ? e.value : undefined;};
+  const getProblemId = _ => {let e = document.querySelector('input[name="problem-radio"]:checked'); return e ? e.value : undefined;};
+  const getSeriesId = _ => {let e = document.querySelector('input[name="series-radio"]:checked'); return e ? e.value : undefined;};
+  const getContestId = _ => {let e = document.querySelector('input[name="contest-radio"]:checked'); return e ? e.value : undefined;};
+  const getTestcaseId = _ => {let e = document.querySelector('input[name="testcase-radio"]:checked'); return e ? e.value : undefined;};
 
-  document.getElementById('signup').onclick = _ => {
+  const betterFetch = (url, options) => 
+    fetch(url, options)
+      .then(async res => {
+        if (res.status >= 200 && res.status < 300) {
+          const contentType = res.headers.get("content-type");
+          return (!contentType || !contentType.includes("application/json")) ? 
+            res : res.json()
+        }
+        throw await res.json()
+      })
+      .catch(err => {
+        const msg = `Got ${err.statusCode}: ${err.error}, ${err.message}`;
+        console.error(msg);
+        alert(msg);
+        throw err
+      })
+
+  document.getElementById('signup').onclick = async _ => {
 
     console.log('signup');
 
     const body = {
       name: document.getElementById('name').value,
-      email:document.getElementById('email').value,
       username: document.getElementById('username').value,
       password: document.getElementById('password').value,
+      email:document.getElementById('email').value,
       year:"2025",
       school:"Rock High School",
       country:"USA",
@@ -107,13 +184,11 @@
       body: JSON.stringify(body)
     };
 
-    fetch( '/v1/users/', options) 
-      .then(response => response.json())
-      .then(response => console.log(response))
-      .catch(err => console.error(err));
+    await betterFetch('/v1/users/', options) 
+      .then(res => alert("signed up"))
   }
 
-  document.getElementById('login').onclick = _ => {
+  document.getElementById('login').onclick = async _ => {
 
     console.log('login');
 
@@ -133,16 +208,12 @@
       body: JSON.stringify(body)
     };
 
-    fetch('/v1/sessions/', options)
-      .then(response => {console.log(response.headers); return response.json()})
-      .then(response => {
-        console.log(response)
-        document.getElementById('userId').innerText = response.userId;
-        document.getElementById('sessionId').innerText = response.sessionId;
-        getUserId = () => response.userId;
+    await betterFetch('/v1/sessions/', options)
+      .then(({userId, sessionId}) => {
+        document.getElementById('userId').innerText = userId;
+        document.getElementById('sessionId').innerText = sessionId;
+        getUserId = () => userId;
       })
-      .catch(err => console.error(err));
-
   }
 
   document.getElementById('domain-add').onclick = _ => {
@@ -177,20 +248,18 @@
 
     console.log('domain-get');
 
-    const res = await fetch(`/v1/users/${getUserId()}/profiles/private`)
-      .then(res => res.json())
-      .catch(console.error);
+    if (getUserId() === undefined) return alert('not logged in');
+
+    const { scopes } = await betterFetch(`/v1/users/${getUserId()}/profiles/private`)
 
     let html = '';
-    for (const domainId of Object.keys(res.scopes)) {
-      const { name, id } = await fetch(`/v1/domains/${domainId}`)
-        .then(res => res.json())
-        .catch(console.error);
+    for (const domainId of Object.keys(scopes)) {
+      const { name, id } = await betterFetch(`/v1/domains/${domainId}`)
 
       html += `
       <div>
       <input type='radio' name='domain-radio' value='${id}'>
-      <label for='${id}'>${name}: ${id}</label>
+      <label for='${id}'><b>${name}</b>: (<i>${id}</i>)</label>
       </div>`
     }
 
@@ -235,19 +304,16 @@
 
     console.log('problem-get');
 
-    const res = await fetch(`/v1/domains/${getDomainId()}/problems/`)
-      .then(res => res.json())
-      .catch(console.error);
+    if (getDomainId() === undefined) return alert('no domain selected');
 
-    if (res.error)
-      return console.error(res.message);
+    const res = await betterFetch(`/v1/domains/${getDomainId()}/problems/`)
 
     let html = '';
     for (const { name, id } of res) {
       html += `
       <div>
       <input type='radio' name='problem-radio' value='${id}'>
-      <label for='${id}'>${name}: ${id}</label>
+      <label for='${id}'><b>${name}</b>: (<i>${id}</i>)</label>
       </div>`
     }
 
@@ -262,35 +328,33 @@
       name: document.getElementById('series-name').value,
     };
 
+    if (!body.name) return alert('no series name');
+
     const options = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     };
 
-    fetch(`/v1/domains/${getDomainId()}/contest-series`, options)
-      .then(res => res.json())
-      .then(res => console.log(res))
-      .catch(console.error);
+    if (getDomainId() === undefined) return alert('no domain selected');
+
+    await betterFetch(`/v1/domains/${getDomainId()}/contest-series`, options)
+      .then(res => alert('series created'));
   }
 
   document.getElementById('series-get').onclick = async _ => {
 
     console.log('series-get');
 
-    const res = await fetch( `/v1/domains/${getDomainId()}/contest-series/`)
-      .then(res => res.json())
-      .catch(console.error);
-
-    if (res.error)
-      return console.error(res.message);
+    if (getDomainId() === undefined) return alert('no domain selected');
+    const res = await betterFetch( `/v1/domains/${getDomainId()}/contest-series/`)
 
     let html = '';
     for (const { name, id, published } of res) {
       html += `
       <div>
       <input type='radio' name='series-radio' value='${id}'>
-      <label for='${id}'>${name}: ${id}</label>
+      <label for='${id}'><b>${name}</b>: (<i>${id}</i>)</label>
       </div>`
     }
 
@@ -300,6 +364,8 @@
   document.getElementById('contest-add').onclick = async _ => {
 
     console.log('contest-add');
+
+    if (getSeriesId() === undefined) return alert('no series selected');
 
     const body = {
       name: document.getElementById('contest-name').value,
@@ -312,47 +378,44 @@
 	    seriesId: getSeriesId()
     };
 
+    if (!body.name || !body.path || !body.handle || !body.startTime || !body.endTime)
+      return alert('unfilled fields');
+
     const options = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     };
 
-    fetch(`/v1/domains/${getDomainId()}/contests`, options)
-      .then(res => res.json())
-      .then(res => console.log(res))
-      .catch(console.error);
+    await betterFetch(`/v1/domains/${getDomainId()}/contests`, options)
+      .then(res => alert('contest created'))
   }
 
   document.getElementById('contest-add-problem').onclick = async _ => {
 
     console.log('contest-add-problem');
 
-    const options = { method: 'PUT' };
+    if (getContestId() === undefined) return alert('no contest selected');
+    if (getProblemId() === undefined) return alert('no problem selected');
 
-    fetch(`/v1/contests/${getContestId()}/problems/${getProblemId()}`, options)
-      .then(res => res.json())
-      .then(res => console.log(res))
-      .catch(console.error);
+    await betterFetch(`/v1/contests/${getContestId()}/problems/${getProblemId()}`, { method: 'PUT' })
+      .then(res => alert('problem added to contest'));
   }
 
   document.getElementById('contest-get').onclick = async _ => {
 
     console.log('contest-get');
 
-    const res = await fetch(`/v1/domains/${getDomainId()}/contests/`)
-      .then(res => res.json())
-      .catch(console.error);
+    if (getDomainId() === undefined) return alert('no domain selected');
 
-    if (res.error)
-      return console.error(res.message);
+    const res = await betterFetch(`/v1/domains/${getDomainId()}/contests/`);
 
     let html = '';
     for (const { name, id, published } of res) {
       html += `
       <div>
       <input type='radio' name='contest-radio' value='${id}'>
-      <label for='${id}'>${name}: ${id}: ${published}</label>
+      <label for='${id}'><b>${name}</b>: (<i>${id}</i>): (${published ? 'published' : 'unpublished'})</label>
       </div>`
     }
 
@@ -363,28 +426,23 @@
 
     console.log('contest-publish');
 
-    const options = { method: 'POST' };
+    if (getContestId() === undefined) return alert('no contest selected');
 
-    const res = await fetch(`/v1/contests/${getContestId()}/publish`, options)
-
-    if (res.status !== 200) return alert('published');
-    console.log(await res.json());
+    await betterFetch(`/v1/contests/${getContestId()}/publish`, { method: 'POST' })
+      .then(res => alert('contest published'))
   }
 
   document.getElementById('contest-problem-get').onclick = async _ => {
 
     console.log('contest-problems-get');
 
-    const res = await fetch(`/v1/contests/${getContestId()}/problems/`)
-      .then(res => res.json())
-      .catch(console.error);
+    if (getContestId() === undefined) return alert('no contest selected');
 
-    if (res.error)
-      return console.error(res.message);
+    const { problems } = await betterFetch(`/v1/contests/${getContestId()}/problems/`)
 
     let html = '';
-    for (const { name, id } of res.problems) {
-      html += `<div>${name}: ${id}</div>`
+    for (const { name, id } of problems) {
+      html += `<div><b>${name}</b>: (<i>${id}</i>)</div>`
     }
 
     document.getElementById('contest-problem-list').innerHTML = html;
@@ -393,33 +451,34 @@
   document.getElementById('testcase-upload').onclick = async _ => {
 
     console.log('testcase-upload');
-    
-    const { uploadId } = await fetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}/upload-session`)
-      .then(res => res.json())
-      .catch(console.error);
 
+    if (getDomainId() === undefined) return alert('no domain selected');
+    if (getProblemId() === undefined) return alert('no problem selected');
+    
     if (!document.getElementById('testcase-input').files[0] || !document.getElementById('testcase-output').files[0])
       return alert('files not selected');
+
+    const { uploadId } = await betterFetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}/upload-session`);
 
     const formData = new FormData();
     formData.append('input', document.getElementById('testcase-input').files[0]);
     formData.append('output', document.getElementById('testcase-output').files[0]);
 
-    const res = await fetch(uploadURL + `/testcases/${uploadId}`, {
+    const res = await betterFetch(uploadURL + `/testcases/${uploadId}`, {
       method: "POST",
       body: formData 
-    })
-      .then(res => res.json())
-      .catch(console.error)
+    });
+
+    console.log('uploaded, add testcase to problem')
 
     if (!res) return alert('no response');
     const [ input, output ] = res;
+    
+    if (!input || !output) return alert('cannot parse input & output from upload response')
 
     console.log(input, output);
     // get problem
-    const problem = await fetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}`)
-      .then(res => res.json())
-      .catch(console.error);
+    const problem = await betterFetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}`)
 
     // update & put problem
     if (!problem.testcases)
@@ -429,27 +488,26 @@
       output,
       points: 1
     });
-    console.log(problem);
 
-    await fetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}`, {
+    await betterFetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}`, {
       method: "PUT",
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(problem)
     })
-      .then(res => res.json())
-      .catch(console.error)
+      .alert('testcase added')
   }
 
   document.getElementById('testcase-get').onclick = async _ => {
 
     console.log('testcase-get');
 
-    const problem = await fetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}`)
-      .then(res => res.json())
-      .catch(console.error);    
+    if (getDomainId() === undefined) return alert('no domain selected');
+    if (getProblemId() === undefined) return alert('no problem selected');
+
+    const { testcases } = await betterFetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}`);
 
     let html = '';
-    for (const { input, output, points } of problem.testcases) {
+    for (const { input, output, points } of testcases) {
       html += `<div>${input.name} => ${output.name}: ${points}pts</div>`
     }
 

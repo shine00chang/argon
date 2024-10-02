@@ -8,7 +8,7 @@ import { contestNotBegan, contestPublished } from '../../auth/contest.auth.js'
 import { completeTeamInvitation } from '../../services/team.services.js'
 import { hasDomainPrivilege, hasNoPrivilege } from '../../auth/scope.auth.js'
 import { isTeamMember } from '../../auth/team.auth.js'
-import { fetchSubmission } from '@argoncs/common'
+import { fetchDomainProblem, fetchSubmission } from '@argoncs/common'
 import { isSuperAdmin } from '../../auth/role.auth.js'
 import { userAuthHook } from '../../hooks/authentication.hooks.js'
 import { contestInfoHook } from '../../hooks/contest.hooks.js'
@@ -120,7 +120,10 @@ async function userSubmissionRoutes (submissionRoutes: FastifyTypeBox): Promise<
       schema: {
         params: Type.Object({ userId: Type.String() }),
         response: {
-          200: Type.Array(SubmissionSchema),
+          200: Type.Array(Type.Intersect([
+            Type.Object({ problemName: Type.String(), problemId: Type.String() }),
+            SubmissionSchema
+          ])),
           400: badRequestSchema,
           401: unauthorizedSchema,
           403: forbiddenSchema
@@ -134,7 +137,16 @@ async function userSubmissionRoutes (submissionRoutes: FastifyTypeBox): Promise<
     async (request, reply) => {
       const { userId } = request.params
       const submissions = await querySubmissions({ query: { userId } })
-      return await reply.status(200).send(submissions)
+      const _submissions = await Promise.all(submissions.map(async submission => {
+        const { name: problemName } = await fetchDomainProblem({ problemId: submission.problemId, domainId: submission.domainId });
+        return { ...submission, problemName };
+      }));
+      // NOTE: having some issues with the _submissions object being GC'ed before returning
+      // When you print _submissions, the object is present, but on the HTTP response it only shows 'PROBLEM NAME'.
+      // I'm guessing this is something to do with ownership, not the typing.
+      // I've just made it stringify it first so that GC won't mess with it.
+      // NOTE: Doing JSON.parse(JSON.stringify(x)) doesn't work either for some reason.
+      return await reply.status(200).send(JSON.stringify(_submissions))
     }
   )
 

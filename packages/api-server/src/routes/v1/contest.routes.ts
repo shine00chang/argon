@@ -64,6 +64,7 @@ import { hasVerifiedEmail } from '../../auth/email.auth.js'
 import { userAuthHook } from '../../hooks/authentication.hooks.js'
 import { contestInfoHook } from '../../hooks/contest.hooks.js'
 import { requestUserProfile } from '../../utils/auth.utils.js'
+import {fetchUser} from '../../services/user.services.js'
 
 async function contestProblemRoutes (problemRoutes: FastifyTypeBox): Promise<void> {
   problemRoutes.addHook('onRequest', contestInfoHook)
@@ -284,7 +285,16 @@ async function contestTeamRoutes (teamRoutes: FastifyTypeBox): Promise<void> {
       schema: {
         params: Type.Object({ contestId: Type.String(), teamId: Type.String() }),
         response: {
-          200: TeamSchema,
+          200: Type.Object({
+            name: Type.String(),
+            id: Type.String(),
+            contestId: Type.String(),
+            captain: Type.String(),
+            members: Type.Array(Type.Object({
+              name: Type.String(),
+              id: Type.String()
+            }))
+          }),
           400: badRequestSchema,
           404: notFoundSchema
         }
@@ -293,7 +303,12 @@ async function contestTeamRoutes (teamRoutes: FastifyTypeBox): Promise<void> {
     async (request, reply) => {
       const { contestId, teamId } = request.params
       const team = await fetchTeam({ teamId, contestId })
-      return await reply.status(200).send(team)
+      const members = await Promise.all(team.members.map(async member => {
+        const { name, id } = await fetchUser({userId: member});
+        return { name, id };
+      }));
+      const _team = { ...team, members }
+      return await reply.status(200).send(_team)
     }
   )
 
@@ -504,7 +519,7 @@ async function contestRanklistRoutes (ranklistRoutes: FastifyTypeBox): Promise<v
       schema: {
         params: Type.Object({ contestId: Type.String() }),
         response: {
-          200: Type.Array(TeamScoreSchema),
+          200: Type.Array(Type.Intersect([TeamScoreSchema, Type.Object({name: Type.String()})])),
           400: badRequestSchema,
           403: forbiddenSchema,
           404: notFoundSchema
@@ -518,7 +533,12 @@ async function contestRanklistRoutes (ranklistRoutes: FastifyTypeBox): Promise<v
     async (request, reply) => {
       const { contestId } = request.params
       const ranklist = await fetchContestRanklist({ contestId })
-      return await reply.status(200).send(ranklist)
+      const _ranklist = await Promise.all(ranklist.map(async team => {
+        const { name } = await fetchTeam({ contestId: team.contestId, teamId: team.id });
+        return { ...team, name };
+      }));
+      
+      return await reply.status(200).send(_ranklist)
     }
   )
 }

@@ -1,3 +1,57 @@
+<head>
+  <link href='https://fonts.googleapis.com/css?family=Poppins' rel='stylesheet'>
+  <style> 
+    body{
+      margin:40px auto;max-width:700px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;
+      font-family: 'Poppins';
+    }
+    h1,h2,h3{line-height:1.2}
+    input,div,button { margin: 0.2rem }
+    input {
+      padding: 5px 12px;
+      font-size: 14px;
+      line-height: 20px;
+      color: #24292e;
+      vertical-align: middle;
+      background-color: #ffffff;
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      border: 1px solid #e1e4e8;
+      border-radius: 6px;
+      outline: none;
+      box-shadow: rgba(225, 228, 232, 0.2) 0px 1px 0px 0px inset;
+      :focus{
+          border-color: #0366d6;
+          outline: none;
+          box-shadow: rgba(3, 102, 214, 0.3) 0px 0px 0px 3px;
+      }
+    }
+    button {
+      display: inline-block;
+      outline: 0;
+      cursor: pointer;
+      padding: 5px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 20px;
+      vertical-align: middle;
+      border: 1px solid;
+      border-radius: 6px;
+      color: #24292e;
+      background-color: #fafbfc;
+      border-color: #1b1f2326;
+      box-shadow: rgba(27, 31, 35, 0.04) 0px 1px 0px 0px, rgba(255, 255, 255, 0.25) 0px 1px 0px 0px inset;
+      transition: 0.2s cubic-bezier(0.3, 0, 0.5, 1);
+      transition-property: color, background-color, border-color;
+      :hover {
+          background-color: #f3f4f6;
+          border-color: #1b1f2326;
+          transition-duration: 0.1s;
+      }
+
+  </style>
+</head>
+
 <h1> Argon Client </h1>
 
 <input type="text" id="name" placeholder="name" value="alvin"> <br>
@@ -46,12 +100,28 @@
 <script>
   let getUserId = _ => undefined;
 
-  const getProblemId = _ => document.querySelector('input[name="problem-radio"]:checked').value;
-  const getSeriesId = _ => document.querySelector('input[name="series-radio"]:checked').value;
-  const getContestId = _ => document.querySelector('input[name="contest-radio"]:checked').value;
+  const getProblemId = _ => {let e = document.querySelector('input[name="problem-radio"]:checked'); return e ? e.value : undefined;};
+  const getSeriesId = _ => {let e = document.querySelector('input[name="series-radio"]:checked'); return e ? e.value : undefined;};
+  const getContestId = _ => {let e = document.querySelector('input[name="contest-radio"]:checked'); return e ? e.value : undefined;};
 
+  const betterFetch = (url, options) => 
+    fetch(url, options)
+      .then(async res => {
+        if (res.status >= 200 && res.status < 300) {
+          const contentType = res.headers.get("content-type");
+          return (!contentType || !contentType.includes("application/json")) ? 
+            res : res.json()
+        }
+        throw await res.json()
+      })
+      .catch(err => {
+        const msg = `Got ${err.statusCode}: ${err.error}, ${err.message}`;
+        console.error(msg);
+        alert(msg);
+        throw err
+      })
 
-  document.getElementById('signup').onclick = _ => {
+  document.getElementById('signup').onclick = async _ => {
 
     console.log('signup');
 
@@ -79,13 +149,11 @@
       body: JSON.stringify(body)
     };
 
-    fetch('/v1/users/', options) 
-      .then(response => response.json())
-      .then(response => console.log(response))
-      .catch(err => console.error(err));
+    await betterFetch('/v1/users/', options) 
+      .then(res => alert("signed up"))
   }
 
-  document.getElementById('login').onclick = _ => {
+  document.getElementById('login').onclick = async _ => {
 
     console.log('login');
 
@@ -105,39 +173,29 @@
       body: JSON.stringify(body)
     };
 
-    fetch('/v1/sessions/', options)
-      .then(response => {console.log(response.headers); return response.json()})
-      .then(response => {
-        console.log(response)
-        document.getElementById('userId').innerText = response.userId;
-        document.getElementById('sessionId').innerText = response.sessionId;
-        getUserId = () => response.userId;
+    await betterFetch('/v1/sessions/', options)
+      .then(({userId, sessionId}) => {
+        document.getElementById('userId').innerText = userId;
+        document.getElementById('sessionId').innerText = sessionId;
+        getUserId = () => userId;
       })
-      .catch(err => console.error(err));
   }
 
   document.getElementById('contest-get').onclick = async _ => {
 
     console.log('contest-get');
 
-    const res = await fetch(`/v1/contest-series/`)
-      .then(res => res.json())
-      .catch(console.error);
-
-    if (res.error)
-      return console.error(res.message);
+    const res = await betterFetch(`/v1/contest-series/`)
 
     let html = '';
     for (const { name: series, contests } of res) {
       for (const id of contests) {
-        const { name, published } = await fetch (`/v1/contests/${id}`)
-          .then(res => res.json())
-          .catch(console.error);
+        const { name, published } = await betterFetch(`/v1/contests/${id}`)
         
         html += `
           <div>
           <input type='radio' name='contest-radio' value='${id}'>
-          <label for='${id}'><b>${name}</b> from <i>${series}</i> (${published}): ${id}</label>
+          <label for='${id}'><b>${name}</b> from <i>${series}</i> (${published ? 'published' : 'unpublished'}): (<i>${id}</i>)</label>
           </div>`
       }
     }
@@ -160,25 +218,40 @@
       body: JSON.stringify(body)
     };
 
-    const { teamId } = await fetch(`/v1/contests/${getContestId()}/teams/`, options)
-      .then(res => res.json())
-      .catch(console.error);
+    await betterFetch(`/v1/contests/${getContestId()}/teams/`, options)
+      .then(res => alert("team created"));
   }
 
   document.getElementById('team-get').onclick = async _ => {
 
     console.log('team-get');
 
-    const { teams } = await fetch(`/v1/users/${getUserId()}/profiles/private`)
-      .then(res => res.json())
-      .catch(console.error);
+    if (getUserId() === undefined) 
+      return alert('not logged in');
 
+    let { teams } = await betterFetch(`/v1/users/${getUserId()}/profiles/private`)
+
+    const fetches = Object.entries(teams)
+      .map(([contestId, teamId]) => new Promise(async (res, rej) => 
+      {
+        const team = await fetch(`/v1/contests/${contestId}/teams/${teamId}`)
+          .then(res => res.json())
+          .catch(rej);
+        const { name: contestName } = await fetch(`/v1/contests/${contestId}`)
+          .then(res => res.json())
+          .catch(rej);
+
+        res({ ...team, contestName })
+      }));
+    teams = await Promise.all(fetches);
     console.log(teams);
-    let html = '';
-    for (const [contestId, teamId] of Object.entries(teams)) {
-      html += `<div><b>${teamId}</b>: ${contestId}</div>`
-    }
 
+    let html = '';
+    for (const { name, contestName, id, contestId, captain, members } of teams) {
+      html += `<div><b>${name}</b>, for: <b>${contestName}</b> (<i>${id}</i>) <ul>`;
+      for (const { name, id } of members) html += `<li><b>${name}</b>: (<i>${id}</i>)</li>`
+      html += '</ul></div>';
+    }
     document.getElementById('team-list').innerHTML = html;
   }
 
@@ -186,9 +259,9 @@
 
     console.log('problems-get');
 
-    const res = await fetch(`/v1/contests/${getContestId()}/problems/`)
-      .then(res => res.json())
-      .catch(console.error);
+    if (getContestId() === undefined) return alert('no contest selected');
+    
+    const res = await betterFetch(`/v1/contests/${getContestId()}/problems/`)
 
     if (res.error)
       return console.error(res.message);
@@ -198,7 +271,7 @@
       html += ` 
       <div>
       <input type='radio' name='problem-radio' value='${id}'>
-      <label for='${id}'>${name}: ${id}</label>
+      <label for='${id}'><b>${name}</b> (<i>${id}</i>)</label>
       </div>`
     }
 
@@ -228,23 +301,27 @@
       body: JSON.stringify(body)
     };
 
-    const { teamId } = await fetch(`/v1/contests/${getContestId()}/problems/${getProblemId()}/submissions`, options)
-      .then(res => res.json())
-      .catch(console.error);
+    await betterFetch(`/v1/contests/${getContestId()}/problems/${getProblemId()}/submissions`, options)
+      .then(res => alert('submitted'))
   }
 
   document.getElementById('submission-get').onclick = async _ => {
 
     console.log('submission-get');
 
-    const submissions = await fetch(`/v1/users/${getUserId()}/submissions`)
-      .then(res => res.json())
-      .catch(console.error);
+    if (getUserId() === undefined) return alert('not logged in');
+
+    // NOTE: special case. read note in API route.
+    const submissions = await betterFetch(`/v1/users/${getUserId()}/submissions`)
+      .then(res => res.json());
 
     let html = '';
-    for (const { problemId, createdAt, status, score } of submissions) {
-      html += `
-      <div>${problemId} @ ${createdAt}: <b>${status}</b> => ${score !== undefined ? score : '...'}</div>`
+    for (const { problemName, problemId, createdAt, status, score, testcases, id } of submissions) {
+      html += `<div><b>${problemName}</b> @ ${(new Date(createdAt)).toLocaleString()}: <b>${status}</b> <i>(${id})</i><br> <b>${score !== undefined ? score : '...'}</b> => `
+      for (const { result } of testcases) {
+        html += `${result.status}:${result.wallTime}ms <b>||</b> `
+      }
+      html += `</div>`;
     }
 
     document.getElementById('submission-list').innerHTML = html;
@@ -254,14 +331,14 @@
 
     console.log('ranklist-get');
 
-    const list = await fetch(`/v1/contests/${getContestId()}/ranklist`)
-      .then(res => res.json())
-      .catch(console.error);
+    if (getContestId() === undefined) return alert('no contest selected');
+
+    const list = await betterFetch(`/v1/contests/${getContestId()}/ranklist`)
 
     let html = '';
-    for (const { id, totalScore: score } of list) {
+    for (const { name, id, totalScore: score } of list) {
       html += `
-      <div>${id}: <b>${score}</b></div>`
+      <div><b>${name}</b> (<i>${id}</i>): ${score}</div>`
     }
 
     document.getElementById('ranklist-list').innerHTML = html;
