@@ -1,9 +1,9 @@
 import {
   type NewProblem,
   type Problem
-} from '@argoncs/types'
+} from '@argoncs/types' /*=*/
 import { NotFoundError } from 'http-errors-enhanced'
-import { mongoClient, domainProblemCollection, submissionCollection, testcaseUploadCollection } from '@argoncs/common'
+import { mongoClient, domainProblemCollection, submissionCollection, uploadSessionCollection } from '@argoncs/common'
 import { testcaseExists } from './testcase.services.js'
 
 import { nanoid } from 'nanoid'
@@ -43,7 +43,7 @@ export async function deleteDomainProblem ({ problemId, domainId }: { problemId:
         throw new NotFoundError('Problem not found')
       }
 
-      await testcaseUploadCollection.deleteMany({ problemId })
+      await uploadSessionCollection.deleteMany({ problemId })
       await submissionCollection.deleteMany({ problemId })
     })
   } finally {

@@ -5,6 +5,7 @@
       margin:40px auto;max-width:700px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;
       font-family: 'Poppins';
     }
+    b{font-weight: 900}
     h1,h2,h3{line-height:1.2}
     input,div,button { margin: 0.2rem }
     input {
@@ -32,7 +33,6 @@
       cursor: pointer;
       padding: 5px 16px;
       font-size: 14px;
-      font-weight: 500;
       line-height: 20px;
       vertical-align: middle;
       border: 1px solid;
@@ -261,17 +261,28 @@
 
     if (getContestId() === undefined) return alert('no contest selected');
     
-    const res = await betterFetch(`/v1/contests/${getContestId()}/problems/`)
-
-    if (res.error)
-      return console.error(res.message);
+    const { problems } = await betterFetch(`/v1/contests/${getContestId()}/problems/`)
 
     let html = '';
-    for (const { name, id } of res.problems) {
+    for (const { name, id } of problems) {
+
+      const problem = await betterFetch(`/v1/contests/${getContestId()}/problems/${id}`);
+
+      const problemHTML = `
+      ${problem.constraints.time}ms <br>
+      ${problem.constraints.memory}MB <br>
+      <hr>
+      ${problem.context}<br>
+      ${problem.inputFormat}<br>
+      ${problem.outputFormat}<br>
+      <hr>`;
       html += ` 
-      <div>
-      <input type='radio' name='problem-radio' value='${id}'>
-      <label for='${id}'><b>${name}</b> (<i>${id}</i>)</label>
+      <details>
+        <summary>
+          <input type='radio' name='problem-radio' value='${id}'>
+          <label for='${id}'><b>${name}</b> (<i>${id}</i>)</label>
+        </summary>
+        ${problemHTML}
       </div>`
     }
 

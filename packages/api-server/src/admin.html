@@ -84,6 +84,8 @@
 <input type="text" id="problem-input" placeholder="input"><br>
 <input type="text" id="problem-output" placeholder="output"><br>
 <button id='problem-add'>add</button> <br>
+<button id='problem-polygon'>polygon add</button> (zipped package)
+<input type="file" id="problem-polygon-input"> <br>
 <button id='problem-get'>get</button> <br>
 
 <div id='problem-list'>
@@ -129,7 +131,7 @@
 </div>
 
 <script>
-  const uploadURL = 'http://13.93.218.61:8001';
+  const uploadURL = 'http://localhost:8001';
 
   let getUserId = _ => undefined;
 
@@ -300,24 +302,56 @@
       .catch(console.error);
   }
 
+  document.getElementById('problem-polygon').onclick = async _ => {
+
+    console.log('problem-polygon');
+
+    if (getDomainId() === undefined) return alert('no domain selected');
+    
+    if (!document.getElementById('problem-polygon-input').files[0])
+      return alert('no polygon file selected');
+
+    const { uploadId } = await betterFetch(`/v1/domains/${getDomainId()}/problems/polygon-upload-session`);
+
+    const formData = new FormData();
+    formData.append('package', document.getElementById('problem-polygon-input').files[0]);
+
+    const res = await betterFetch(uploadURL + `/polygon/${uploadId}`, {
+      method: "POST",
+      body: formData 
+    })
+      .then(res => alert('package uploaded'))
+  }
+
   document.getElementById('problem-get').onclick = async _ => {
 
     console.log('problem-get');
 
     if (getDomainId() === undefined) return alert('no domain selected');
 
-    const res = await betterFetch(`/v1/domains/${getDomainId()}/problems/`)
+    const problems = await betterFetch(`/v1/domains/${getDomainId()}/problems/`)
 
     let html = '';
-    for (const { name, id } of res) {
-      html += `
-      <div>
-      <input type='radio' name='problem-radio' value='${id}'>
-      <label for='${id}'><b>${name}</b>: (<i>${id}</i>)</label>
+    for (const { name, id, context, inputFormat, outputFormat, constraints } of problems) {
+
+      const problemHTML = `
+      ${constraints.time}ms <br>
+      ${constraints.memory}MB <br>
+      <hr>
+      ${context}<br>
+      ${inputFormat}<br>
+      ${outputFormat}<br>
+      <hr>`;
+      html += ` 
+      <details>
+        <summary>
+          <input type='radio' name='problem-radio' value='${id}'>
+          <label for='${id}'><b>${name}</b> (<i>${id}</i>)</label>
+        </summary>
+        ${problemHTML}
       </div>`
     }
-
-    document.getElementById('problem-list').innerHTML = html;
+   document.getElementById('problem-list').innerHTML = html;
   }
 
   document.getElementById('series-add').onclick = async _ => {

@@ -11,6 +11,7 @@ import { connectMinIO, connectMongoDB, sentry } from '@argoncs/common'
 
 import fastifySensible from '@fastify/sensible'
 import assert from 'assert'
+import { polygonRoutes } from './routes/polygon.routes.js'
 
 const app = fastify({
   logger: {
@@ -48,6 +49,7 @@ export async function startUploadServer (): Promise<void> {
     credentials: true
   })
 
+  await app.register(polygonRoutes, { prefix: '/polygon' })
   await app.register(testcaseRoutes, { prefix: '/testcases' })
   await app.register(heartbeatRoutes, { prefix: '/heartbeat' })
 

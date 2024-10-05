@@ -1,6 +1,6 @@
-import { minio, testcaseUploadCollection } from '@argoncs/common'
+import { minio, uploadSessionCollection } from '@argoncs/common'
 import { type MultipartFile } from '@fastify/multipart'
-import { UnauthorizedError } from 'http-errors-enhanced'
+import { BadRequestError, UnauthorizedError } from 'http-errors-enhanced'
 import path from 'node:path'
 import type internal from 'node:stream'
 
@@ -32,9 +32,28 @@ export async function uploadFile (
 
 /* Consumes an upload session, returns the domain and problem authorized */
 export async function consumeUploadSession (uploadId: string): Promise<{ domainId: string, problemId: string }> {
-  const upload = await testcaseUploadCollection.findOneAndDelete({ id: uploadId })
+  const upload = await uploadSessionCollection.findOneAndDelete({ id: uploadId })
   if (upload == null) {
     throw new UnauthorizedError('Invalid upload session token')
+  }
+  const { domainId, problemId } = upload;
+  if (!problemId) {
+    if (upload.polygon) 
+      throw new BadRequestError('Upload session created for Polygon upload, not testcase upload.')
+    else 
+      throw new BadRequestError('Testcase upload session does not have problemId.')
+  }
+  return { domainId, problemId } 
+}
+
+/* Consumes an upload session, returns the domain and problem authorized */
+export async function consumePolygonUploadSession (uploadId: string): Promise<{ domainId: string }> {
+  const upload = await uploadSessionCollection.findOneAndDelete({ id: uploadId })
+  if (upload == null) {
+    throw new UnauthorizedError('Invalid upload session token')
+  }
+  if (upload.problemId && !upload.polygon) {
+    throw new BadRequestError('Upload session created for testcase upload, not Polygon upload.')
   }
   return upload
 }

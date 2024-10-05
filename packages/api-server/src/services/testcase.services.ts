@@ -1,5 +1,5 @@
 import { NotFoundError } from 'http-errors-enhanced'
-import { fetchDomainProblem, minio, testcaseUploadCollection } from '@argoncs/common'
+import { fetchDomainProblem, minio, uploadSessionCollection } from '@argoncs/common'
 
 import path = require('node:path')
 import { nanoid } from 'nanoid'
@@ -20,6 +20,12 @@ export async function testcaseExists ({ problemId, domainId, filename, versionId
 export async function createUploadSession ({ problemId, domainId }: { problemId: string, domainId: string }): Promise<{ uploadId: string }> {
   const id = nanoid(32)
   await fetchDomainProblem({ problemId, domainId }) // Could throw not found
-  await testcaseUploadCollection.insertOne({ id, problemId, domainId, createdAt: (new Date()).getTime() })
+  await uploadSessionCollection.insertOne({ id, problemId, domainId, createdAt: (new Date()).getTime() })
+  return { uploadId: id }
+}
+
+export async function createPolygonUploadSession ({ domainId }: { domainId: string }): Promise<{ uploadId: string }> {
+  const id = nanoid(32)
+  await uploadSessionCollection.insertOne({ id, domainId, polygon: true, createdAt: (new Date()).getTime() })
   return { uploadId: id }
 }

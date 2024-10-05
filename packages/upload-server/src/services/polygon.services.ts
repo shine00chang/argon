@@ -1,6 +1,6 @@
 import { uploadFile } from './testcase.services.js'
 import { nanoid } from 'nanoid'
-import { type Constraints, type NewProblem } from '@argoncs/types'
+import { Problem, type Constraints, type NewProblem } from '@argoncs/types'
 import { type MultipartFile } from '@fastify/multipart'
 import { exec as exec_sync } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -12,13 +12,10 @@ import { domainProblemCollection } from '@argoncs/common'
 const exec = promisify(exec_sync)
 
 /* Extracts content from polygon package archive, updates problem data, and uploads testcases */
-export async function uploadPolygon (
-  domainId: string,
-  problemId: string,
-  archive: MultipartFile
-): Promise<void> {
+export async function uploadPolygon ({ domainId, archive }: { domainId: string, archive: MultipartFile}): Promise<string> {
+
   // Make working directory
-  const work_path = path.join(process.cwd(), `temp-${await nanoid()}`)
+  const work_path = path.join(process.cwd(), `temp-${nanoid()}`)
   await fs.mkdir(work_path)
 
   // Copy archive into directory
@@ -30,7 +27,7 @@ export async function uploadPolygon (
 
   if (stderr) {
     console.log(stderr)
-    throw new BadRequestError('Couldnot unzip package archive')
+    throw new BadRequestError('Could not unzip package archive')
   }
   console.log(`== Finished Unzipping. ${archive_path} => ${work_path}`)
 
@@ -49,7 +46,9 @@ export async function uploadPolygon (
   const context = statement.legend + '\n\n' + statement.notes
 
   // Create Problem
-  const problem: NewProblem = {
+  const problem: Problem = {
+    id: nanoid(),
+    domainId,
     name: statement.name,
     context,
     inputFormat: statement.input,
@@ -71,8 +70,8 @@ export async function uploadPolygon (
     const input_file = await fs.open(path.join(work_path, 'tests', name))
     const output_file = await fs.open(path.join(work_path, 'tests', name + '.a'))
 
-    const input = await uploadFile(domainId, problemId, name, input_file.createReadStream())
-    const output = await uploadFile(domainId, problemId, name + '-ans', output_file.createReadStream())
+    const input = await uploadFile(domainId, problem.id, name, input_file.createReadStream())
+    const output = await uploadFile(domainId, problem.id, name + '-ans', output_file.createReadStream())
 
     problem.testcases.push({
       input,
@@ -80,13 +79,14 @@ export async function uploadPolygon (
       points: 100 / test_n
     })
   }
+  /* Cleanup working directory */
+  await exec(`rm -rf ${work_path}`)
 
   console.log('problem: ', problem)
 
   // Update problem
   // Assuming the token is correct, the problem must exist.
-  await domainProblemCollection.updateOne({ id: problemId, domainId }, { $set: problem })
+  await domainProblemCollection.insertOne(problem)
 
-  /* Cleanup working directory */
-  await exec(`rm -rf ${work_path}`)
+  return problem.id
 }

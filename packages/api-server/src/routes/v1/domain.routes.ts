@@ -25,7 +25,7 @@ import { type FastifyTypeBox } from '../../types.js'
 import { createDomainProblem, deleteDomainProblem, fetchDomainProblems, updateDomainProblem } from '../../services/problem.services.js'
 import { fetchDomainProblem } from '@argoncs/common'
 import { createTestingSubmission } from '../../services/submission.services.js'
-import { createUploadSession } from '../../services/testcase.services.js'
+import { createPolygonUploadSession, createUploadSession } from '../../services/testcase.services.js'
 import { UnauthorizedError, badRequestSchema, forbiddenSchema, methodNotAllowedSchema, notFoundSchema, unauthorizedSchema } from 'http-errors-enhanced'
 import { createContest, createContestSeries, fetchDomainContestSeries, fetchDomainContests } from '../../services/contest.services.js'
 import { userAuthHook } from '../../hooks/authentication.hooks.js'
@@ -306,6 +306,30 @@ async function domainProblemRoutes (problemRoutes: FastifyTypeBox): Promise<void
     async (request, reply) => {
       const { domainId, problemId } = request.params
       const { uploadId } = await createUploadSession({ problemId, domainId })
+      await reply.status(200).send({ uploadId })
+    }
+  )
+
+  problemRoutes.get(
+    '/polygon-upload-session',
+    {
+      schema: {
+        response: {
+          200: Type.Object({ uploadId: Type.String() }),
+          400: badRequestSchema,
+          401: unauthorizedSchema,
+          403: forbiddenSchema,
+          404: notFoundSchema
+        },
+        params: Type.Object({ domainId: Type.String() })
+      },
+      onRequest: [userAuthHook, problemRoutes.auth([
+        [hasDomainPrivilege(['problem.manage'])]
+      ]) as any]
+    },
+    async (request, reply) => {
+      const { domainId } = request.params
+      const { uploadId } = await createPolygonUploadSession({ domainId })
       await reply.status(200).send({ uploadId })
     }
   )
