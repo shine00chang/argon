@@ -50,3 +50,9 @@ export interface CompilingResultMessage {
   submissionId: string
   result: CompilingResult
 }
+
+export interface CheckerCompileTask {
+  type: JudgerTaskType.CheckerCompile,
+  source: string,
+  problemId: string,
+}

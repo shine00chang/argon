@@ -74,7 +74,6 @@ export async function startJudger (): Promise<void> {
             submissionId: task.submissionId,
             testcaseIndex: task.testcaseIndex
           }
-          // send grade message
         } else if (task.type === JudgerTaskType.Compiling) {
           console.log('compiling')
           result = {
@@ -82,8 +81,6 @@ export async function startJudger (): Promise<void> {
             result: (await compileSubmission({ task, boxId })),
             submissionId: task.submissionId
           }
-
-          // send grade message
         } else {
           throw Error('Invalid task type')
         }

@@ -1,5 +1,5 @@
 import { fetchContestProblem, fetchDomainProblem, fetchSubmission, judgerExchange, judgerTasksKey, rabbitMQ, ranklistRedis, recalculateTeamTotalScore, submissionCollection, teamScoreCollection } from '@argoncs/common'
-import { type CompilingResult, CompilingStatus, type GradingResult, GradingStatus, type GradingTask, JudgerTaskType, type Problem, SubmissionStatus } from '@argoncs/types'
+import { type CompilingResult, CompilingStatus, type GradingResult, GradingStatus, type GradingTask, JudgerTaskType, type Problem, SubmissionStatus } from '@argoncs/types' /*=*/
 import { NotFoundError } from 'http-errors-enhanced'
 import path from 'path'
 

@@ -10,6 +10,7 @@ import {
 } from './sandbox.services.js'
 
 import { fetchBinary, fetchTestcase } from './storage.services.js'
+import {NotFoundError} from 'http-errors-enhanced'
 
 export async function gradeSubmission ({ task, boxId }: { task: GradingTask, boxId: number }): Promise<GradingResult> {
 
@@ -18,11 +19,16 @@ export async function gradeSubmission ({ task, boxId }: { task: GradingTask, box
   const binaryPath = path.join(workDir, config.binaryFile)
   const inputPath = path.join(workDir, 'in.txt')
   const answerPath = path.join(workDir, 'ans.txt')
+  const checkerPath = path.join(workDir, 'checker');
 
   await fetchBinary({ objectName: task.submissionId, destPath: binaryPath })
   await fetchTestcase({ objectName: task.testcase.input.objectName, versionId: task.testcase.input.versionId, destPath: inputPath })
   await fetchTestcase({ objectName: task.testcase.output.objectName, versionId: task.testcase.output.versionId, destPath: answerPath })
   await makeExecutable(path.join(workDir, config.binaryFile))
+  await fetchChecker({
+    objectName: task.checker.objectName,
+    versionId: task.checker.versionId,
+    destPath: checkerPath })
 
   let command = config.executeCommand
   command = command.replaceAll('{binary_path}', config.binaryFile)
@@ -38,6 +44,7 @@ export async function gradeSubmission ({ task, boxId }: { task: GradingTask, box
       },
       boxId
     })
+
   //return  new Promise((resolve, reject) => resolve({ message: '', status: GradingStatus.Accepted, memory: 1, time: 1, wallTime: 1}));
   
   if (sandboxResult.status === SandboxStatus.Succeeded) {

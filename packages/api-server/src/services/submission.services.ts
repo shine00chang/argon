@@ -5,7 +5,7 @@ import {
   SubmissionStatus,
   type Submission,
   type Problem
-} from '@argoncs/types'
+} from '@argoncs/types' /*=*/
 import { rabbitMQ, judgerExchange, judgerTasksKey, submissionCollection, fetchDomainProblem, fetchContestProblem } from '@argoncs/common'
 import { languageConfigs } from '../../configs/language.configs.js'
 
@@ -45,6 +45,7 @@ async function createSubmission ({ submission, userId, target }: { submission: N
 
   const task: CompilingTask = {
     submissionId,
+    problemId: problem.id,
     type: JudgerTaskType.Compiling,
     source: submission.source,
     language: submission.language,
