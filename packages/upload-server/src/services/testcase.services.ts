@@ -1,27 +1,17 @@
 import { minio, uploadSessionCollection } from '@argoncs/common'
-import { type MultipartFile } from '@fastify/multipart'
+import { type MultipartFile } from '@fastify/multipart' /*=*/
 import { BadRequestError, UnauthorizedError } from 'http-errors-enhanced'
 import path from 'node:path'
 import type internal from 'node:stream'
 
-/* Uploads a MultipartFile to testcases. Warps 'uploadFile(..)' */
-export async function uploadTestcase (
-  domainId: string,
-  problemId: string,
-  testcase: MultipartFile
-): Promise<{ versionId: string, name: string }> {
-  const filename = testcase.filename.replaceAll('/', '.')
-  return await uploadFile(domainId, problemId, filename, testcase.file)
-}
 
 /* Uploads a single file into 'testcases' */
-export async function uploadFile (
-  domainId: string,
+export async function uploadTestcase ({ problemId, filename, stream }:{
   problemId: string,
   filename: string,
   stream: internal.Readable
-): Promise<{ versionId: string, name: string }> {
-  const objectName = path.join(domainId, problemId, filename)
+}): Promise<{ versionId: string, name: string }> {
+  const objectName = path.join(problemId, filename)
   const { versionId } = await minio.putObject('testcases', objectName, stream)
   if (versionId == null) {
     throw Error('Versioning not enabled on testcases bucket')

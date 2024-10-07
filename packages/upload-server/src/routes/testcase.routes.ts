@@ -1,10 +1,9 @@
 import { consumeUploadSession, uploadTestcase } from '../services/testcase.services.js'
-import { uploadPolygon } from '../services/polygon.services.js'
 
 import { Type } from '@sinclair/typebox'
 import multipart from '@fastify/multipart'
 import { type FastifyTypeBox } from '../types.js'
-import { BadRequestError, badRequestSchema, PayloadTooLargeError, unauthorizedSchema } from 'http-errors-enhanced'
+import { BadRequestError, badRequestSchema, PayloadTooLargeError, unauthorizedSchema } from 'http-errors-enhanced' /*=*/
 
 export async function testcaseRoutes (routes: FastifyTypeBox): Promise<void> {
   await routes.register(multipart.default, {
@@ -38,7 +37,11 @@ export async function testcaseRoutes (routes: FastifyTypeBox): Promise<void> {
         const testcases = request.files()
         const queue: Array<Promise<{ versionId: string, name: string }>> = []
         for await (const testcase of testcases) {
-          queue.push(uploadTestcase(domainId, problemId, testcase))
+          queue.push(uploadTestcase({
+            problemId, 
+            filename: testcase.filename.replaceAll('/', '.'),
+            stream: testcase.file
+          }))
         }
         return await reply.status(201).send(await Promise.all(queue))
       } catch (err) {

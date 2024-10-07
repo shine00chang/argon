@@ -88,10 +88,9 @@ interface SandboxSucceeded {
   wallTime: number
 }
 
-export async function runInSandbox (
-  { task, boxId }: { task: SandboxTask, boxId: number }): Promise<
-  SandboxSucceeded | SandboxMemoryExceeded | SandboxSystemError | SandboxTimeExceeded | SandboxRuntimeError
-  > {
+export async function runInSandbox ({ task, boxId }: { task: SandboxTask, boxId: number }):
+  Promise<SandboxSucceeded | SandboxMemoryExceeded | SandboxSystemError | SandboxTimeExceeded | SandboxRuntimeError> 
+{
   let command = `isolate --run --cg --box-id=${boxId} --meta=${metaPath(boxId)}`
 
   if (task.constraints.memory != null) {

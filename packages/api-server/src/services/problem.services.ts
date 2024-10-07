@@ -8,19 +8,22 @@ import { testcaseExists } from './testcase.services.js'
 
 import { nanoid } from 'nanoid'
 
+/*
 export async function createDomainProblem ({ newProblem, domainId }: { newProblem: NewProblem, domainId: string }): Promise<{ problemId: string }> {
   const problemId = nanoid()
   const problem: Problem = { ...newProblem, id: problemId, domainId }
   await domainProblemCollection.insertOne(problem)
   return { problemId }
 }
+*/
 
+/*
 export async function updateDomainProblem ({ problemId, domainId, problem }: { problemId: string, domainId: string, problem: Partial<NewProblem> }): Promise<{ modified: boolean }> {
   if (problem.testcases != null) {
     const testcasesVerifyQueue: Array<Promise<void>> = []
     problem.testcases.forEach((testcase) => {
-      testcasesVerifyQueue.push(testcaseExists({ problemId, domainId, filename: testcase.input.name, versionId: testcase.input.versionId }))
-      testcasesVerifyQueue.push(testcaseExists({ problemId, domainId, filename: testcase.output.name, versionId: testcase.output.versionId }))
+      testcasesVerifyQueue.push(testcaseExists({ problemId, filename: testcase.input.name, versionId: testcase.input.versionId }))
+      testcasesVerifyQueue.push(testcaseExists({ problemId, filename: testcase.output.name, versionId: testcase.output.versionId }))
     })
     await Promise.all(testcasesVerifyQueue)
   }
@@ -32,6 +35,7 @@ export async function updateDomainProblem ({ problemId, domainId, problem }: { p
 
   return { modified: modifiedCount > 0 }
 }
+*/
 
 export async function deleteDomainProblem ({ problemId, domainId }: { problemId: string, domainId: string }): Promise<void> {
   const session = mongoClient.startSession()

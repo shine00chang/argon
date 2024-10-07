@@ -1,13 +1,13 @@
-import { uploadFile } from './testcase.services.js'
+import { uploadTestcase } from './testcase.services.js'
 import { nanoid } from 'nanoid'
-import { Problem, type Constraints, type NewProblem } from '@argoncs/types'
-import { type MultipartFile } from '@fastify/multipart'
+import { CompilingCheckerTask, JudgerTaskType, Problem, type Constraints, type NewProblem } from '@argoncs/types' /*=*/
+import { type MultipartFile } from '@fastify/multipart' /*=*/
 import { exec as exec_sync } from 'node:child_process'
 import { promisify } from 'node:util'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { BadRequestError } from 'http-errors-enhanced'
-import { domainProblemCollection } from '@argoncs/common'
+import { domainProblemCollection, judgerTasksKey, judgerExchange, rabbitMQ } from '@argoncs/common'
 
 const exec = promisify(exec_sync)
 
@@ -23,11 +23,11 @@ export async function uploadPolygon ({ domainId, archive }: { domainId: string, 
 
   // Unzip Archive
   const archive_path = path.join(work_path, 'archive')
-  const { stderr } = await exec(`unzip ${archive_path} -d ${work_path}`)
-
-  if (stderr) {
-    console.log(stderr)
-    throw new BadRequestError('Could not unzip package archive')
+  try {
+    await exec(`unzip ${archive_path} -d ${work_path}`)
+  } catch (err) {
+    console.log(err)
+    throw new BadRequestError(`Could not unzip package archive: ${err}`)
   }
   console.log(`== Finished Unzipping. ${archive_path} => ${work_path}`)
 
@@ -70,8 +70,8 @@ export async function uploadPolygon ({ domainId, archive }: { domainId: string, 
     const input_file = await fs.open(path.join(work_path, 'tests', name))
     const output_file = await fs.open(path.join(work_path, 'tests', name + '.a'))
 
-    const input = await uploadFile(domainId, problem.id, name, input_file.createReadStream())
-    const output = await uploadFile(domainId, problem.id, name + '-ans', output_file.createReadStream())
+    const input = await uploadTestcase({problemId:problem.id, filename: name, stream: input_file.createReadStream()})
+    const output = await uploadTestcase({problemId: problem.id, filename: name + '-ans', stream: output_file.createReadStream()})
 
     problem.testcases.push({
       input,
@@ -79,14 +79,23 @@ export async function uploadPolygon ({ domainId, archive }: { domainId: string, 
       points: 100 / test_n
     })
   }
-  /* Cleanup working directory */
-  await exec(`rm -rf ${work_path}`)
-
   console.log('problem: ', problem)
 
   // Update problem
   // Assuming the token is correct, the problem must exist.
   await domainProblemCollection.insertOne(problem)
+
+  // Compile checker
+  const checkerSource = (await fs.readFile(path.join(work_path, 'check.cpp'))).toString()
+  const compileTask: CompilingCheckerTask = {
+    type: JudgerTaskType.CompilingChecker,
+    source: checkerSource,
+    problemId: problem.id
+  }
+  rabbitMQ.publish(judgerExchange, judgerTasksKey, Buffer.from(JSON.stringify(compileTask)))
+
+  // Cleanup working directory
+  await exec(`rm -rf ${work_path}`)
 
   return problem.id
 }

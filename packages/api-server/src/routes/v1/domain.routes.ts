@@ -21,14 +21,15 @@ import {
 } from '../../services/domain.services.js'
 import { isSuperAdmin } from '../../auth/role.auth.js'
 import { hasDomainPrivilege } from '../../auth/scope.auth.js'
-import { type FastifyTypeBox } from '../../types.js'
-import { createDomainProblem, deleteDomainProblem, fetchDomainProblems, updateDomainProblem } from '../../services/problem.services.js'
+import { type FastifyTypeBox } from '../../types.js' /*=*/
+import { deleteDomainProblem, fetchDomainProblems } from '../../services/problem.services.js'
 import { fetchDomainProblem } from '@argoncs/common'
 import { createTestingSubmission } from '../../services/submission.services.js'
-import { createPolygonUploadSession, createUploadSession } from '../../services/testcase.services.js'
+import { createPolygonUploadSession } from '../../services/testcase.services.js'
 import { UnauthorizedError, badRequestSchema, forbiddenSchema, methodNotAllowedSchema, notFoundSchema, unauthorizedSchema } from 'http-errors-enhanced'
 import { createContest, createContestSeries, fetchDomainContestSeries, fetchDomainContests } from '../../services/contest.services.js'
 import { userAuthHook } from '../../hooks/authentication.hooks.js'
+/*=*/
 
 async function domainMemberRoutes (memberRoutes: FastifyTypeBox): Promise<void> {
   memberRoutes.post(
@@ -134,6 +135,7 @@ async function domainMemberRoutes (memberRoutes: FastifyTypeBox): Promise<void> 
 }
 
 async function domainProblemRoutes (problemRoutes: FastifyTypeBox): Promise<void> {
+/*
   problemRoutes.post(
     '/',
     {
@@ -158,6 +160,7 @@ async function domainProblemRoutes (problemRoutes: FastifyTypeBox): Promise<void
       return await reply.status(201).send(created)
     }
   )
+*/
 
   problemRoutes.get(
     '/',
@@ -182,6 +185,7 @@ async function domainProblemRoutes (problemRoutes: FastifyTypeBox): Promise<void
     }
   )
 
+/*
   problemRoutes.put(
     '/:problemId',
     {
@@ -207,6 +211,7 @@ async function domainProblemRoutes (problemRoutes: FastifyTypeBox): Promise<void
       return await reply.status(200).send({ modified })
     }
   )
+*/
 
   problemRoutes.delete(
     '/:problemId',
@@ -286,6 +291,7 @@ async function domainProblemRoutes (problemRoutes: FastifyTypeBox): Promise<void
     }
   )
 
+/*
   problemRoutes.get(
     '/:problemId/upload-session',
     {
@@ -309,6 +315,7 @@ async function domainProblemRoutes (problemRoutes: FastifyTypeBox): Promise<void
       await reply.status(200).send({ uploadId })
     }
   )
+*/
 
   problemRoutes.get(
     '/polygon-upload-session',

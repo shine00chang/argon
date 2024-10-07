@@ -283,7 +283,7 @@
           <label for='${id}'><b>${name}</b> (<i>${id}</i>)</label>
         </summary>
         ${problemHTML}
-      </div>`
+      </details>`
     }
 
     document.getElementById('problem-list').innerHTML = html;
@@ -327,8 +327,12 @@
       .then(res => res.json());
 
     let html = '';
-    for (const { problemName, problemId, createdAt, status, score, testcases, id } of submissions) {
+    for (const { problemName, problemId, createdAt, status, score, testcases, id, log } of submissions) {
       html += `<div><b>${problemName}</b> @ ${(new Date(createdAt)).toLocaleString()}: <b>${status}</b> <i>(${id})</i><br> <b>${score !== undefined ? score : '...'}</b> => `
+
+      if (log) html += `<b style='color: red'>${log}</b><br>`
+      if (status !== 'Graded') continue;
+      if (!testcases) continue;
       for (const { result } of testcases) {
         html += `${result.status}:${result.wallTime}ms <b>||</b> `
       }

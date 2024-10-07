@@ -126,7 +126,8 @@ async function userSubmissionRoutes (submissionRoutes: FastifyTypeBox): Promise<
           ])),
           400: badRequestSchema,
           401: unauthorizedSchema,
-          403: forbiddenSchema
+          403: forbiddenSchema,
+          404: notFoundSchema
         }
       },
       onRequest: [userAuthHook, submissionRoutes.auth([

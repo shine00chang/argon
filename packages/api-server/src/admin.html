@@ -79,14 +79,17 @@
 </div>
 
 <h2>Problems</h2>
+<!--
 <input type="text" id="problem-name" placeholder="name"><br>
 <input type="text" id="problem-context" placeholder="context"><br>
 <input type="text" id="problem-input" placeholder="input"><br>
 <input type="text" id="problem-output" placeholder="output"><br>
 <button id='problem-add'>add</button> <br>
+-->
 <button id='problem-polygon'>polygon add</button> (zipped package)
 <input type="file" id="problem-polygon-input"> <br>
-<button id='problem-get'>get</button> <br>
+<button id='problem-get'>get</button> 
+<button id='problem-delete'>delete</button> <br>
 
 <div id='problem-list'>
 </div>
@@ -106,13 +109,15 @@
 <input type="number" id="contest-endTime" placeholder="endTime"><br>
 <button id='contest-add'>add</button> <br>
 <button id='contest-add-problem'>add problem</button> <br>
-<button id='contest-get'>get</button> <br>
+<button id='contest-get'>get</button> 
+<button id='contest-delete'>delete</button> <br>
 
 <div id='contest-list'>
 </div>
 
 <h2>Contest Problems</h2>
-<button id='contest-problem-get'>get</button> <br>
+<button id='contest-problem-get'>get</button> 
+<button id='contest-problem-delete'>delete</button> <br>
 
 <div id='contest-problem-list'>
 </div>
@@ -121,17 +126,19 @@
 <button id='contest-publish'>publish</button>
 
 <h2>Testcases</h2>
+<!--
 <input type="file" id="testcase-input"> <br>
 <input type="file" id="testcase-output"> <br>
 <button id='testcase-upload'>upload</button>
-<button id='testcase-get'>get</button>
 <button id='testcase-delete' disabled>delete</button>
+-->
 
+<button id='testcase-get'>get</button>
 <div id='testcase-list'>
 </div>
 
 <script>
-  const uploadURL = 'http://localhost:8001';
+  const uploadURL = 'http://13.93.218.61:8001';
 
   let getUserId = _ => undefined;
 
@@ -139,6 +146,7 @@
   const getProblemId = _ => {let e = document.querySelector('input[name="problem-radio"]:checked'); return e ? e.value : undefined;};
   const getSeriesId = _ => {let e = document.querySelector('input[name="series-radio"]:checked'); return e ? e.value : undefined;};
   const getContestId = _ => {let e = document.querySelector('input[name="contest-radio"]:checked'); return e ? e.value : undefined;};
+  const getContestProblemId = _ => {let e = document.querySelector('input[name="contest-problem-radio"]:checked'); return e ? e.value : undefined;};
   const getTestcaseId = _ => {let e = document.querySelector('input[name="testcase-radio"]:checked'); return e ? e.value : undefined;};
 
   const betterFetch = (url, options) => 
@@ -268,6 +276,7 @@
     document.getElementById('domain-list').innerHTML = html;
   }
 
+/*
   document.getElementById('problem-add').onclick = async _ => {
 
     console.log('problem-add');
@@ -300,6 +309,17 @@
       .then(res => res.json())
       .then(res => console.log(res))
       .catch(console.error);
+  }
+  */
+  document.getElementById('problem-delete').onclick = async _ => {
+
+    console.log('problem-delete');
+
+    if (getDomainId() === undefined) return alert('no domain selected');
+    if (getProblemId() === undefined) return alert('no problem selected');
+
+    await betterFetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}`, { method: 'DELETE' })
+      .then(_ => alert('problem deleted'))
   }
 
   document.getElementById('problem-polygon').onclick = async _ => {
@@ -349,7 +369,7 @@
           <label for='${id}'><b>${name}</b> (<i>${id}</i>)</label>
         </summary>
         ${problemHTML}
-      </div>`
+      </details>`
     }
    document.getElementById('problem-list').innerHTML = html;
   }
@@ -476,12 +496,27 @@
 
     let html = '';
     for (const { name, id } of problems) {
-      html += `<div><b>${name}</b>: (<i>${id}</i>)</div>`
+      html += `
+      <div>
+        <input type='radio' name='contest-problem-radio' value='${id}'>
+        <b>${name}</b>: (<i>${id}</i>)
+      </div>`
     }
 
     document.getElementById('contest-problem-list').innerHTML = html;
   }
 
+  document.getElementById('contest-problem-delete').onclick = async _ => {
+
+    console.log('contest-problem-delete');
+
+    if (getContestId() === undefined) return alert('no contest selected');
+    if (getContestProblemId() === undefined) return alert('no contest problem selected');
+
+    await betterFetch(`/v1/contests/${getContestId()}/problems/${getContestProblemId()}`, { method: 'DELETE' })
+  }
+
+  /*
   document.getElementById('testcase-upload').onclick = async _ => {
 
     console.log('testcase-upload');
@@ -530,6 +565,7 @@
     })
       .alert('testcase added')
   }
+  */
 
   document.getElementById('testcase-get').onclick = async _ => {
 
