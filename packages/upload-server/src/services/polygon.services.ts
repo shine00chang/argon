@@ -1,13 +1,13 @@
 import { uploadFile } from './testcase.services.js'
 import { nanoid } from 'nanoid'
-import { Problem, type Constraints, type NewProblem } from '@argoncs/types'
-import { type MultipartFile } from '@fastify/multipart'
+import { CheckerCompileTask, JudgerTaskType, Problem, type Constraints, type NewProblem } from '@argoncs/types' /*=*/
+import { type MultipartFile } from '@fastify/multipart' /*=*/
 import { exec as exec_sync } from 'node:child_process'
 import { promisify } from 'node:util'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { BadRequestError } from 'http-errors-enhanced'
-import { domainProblemCollection } from '@argoncs/common'
+import { domainProblemCollection, judgerTasksKey, judgerTasksQueue, rabbitMQ } from '@argoncs/common'
 
 const exec = promisify(exec_sync)
 
@@ -87,6 +87,15 @@ export async function uploadPolygon ({ domainId, archive }: { domainId: string, 
   // Update problem
   // Assuming the token is correct, the problem must exist.
   await domainProblemCollection.insertOne(problem)
+
+  // Compile checker
+  const checkerSource = (await fs.readFile(path.join(work_path, 'checker.cpp'))).toString()
+  const compileTask: CheckerCompileTask = {
+    type: JudgerTaskType.CompilingChecker,
+    source: checkerSource,
+    problemId: problem.id
+  }
+  rabbitMQ.publish(judgerTasksQueue, judgerTasksKey, Buffer.from(JSON.stringify(compileTask)))
 
   return problem.id
 }

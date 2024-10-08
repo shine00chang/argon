@@ -51,8 +51,8 @@ export interface CompilingResultMessage {
   result: CompilingResult
 }
 
-export interface CheckerCompileTask {
-  type: JudgerTaskType.CheckerCompile,
+export interface CompilingCheckerTask {
+  type: JudgerTaskType.CompilingChecker,
   source: string,
   problemId: string,
 }

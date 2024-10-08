@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs'
 
 import { runInSandbox } from './sandbox.services.js'
 
-import { type CompilingTask, SandboxStatus, type CompileSucceeded, type CompileFailed, CompilingStatus } from '@argoncs/types'
+import { type CompilingTask, SandboxStatus, type CompileSucceeded, type CompileFailed, CompilingStatus, type CompilingCheckerTask } from '@argoncs/types'
 import { minio } from '@argoncs/common'
 import { languageConfigs } from '../../configs/language.configs.js'
 
@@ -50,38 +50,33 @@ export async function compileSubmission ({ task, boxId }: { task: CompilingTask,
   }
 }
 
-export async function compileChecker ({ task, boxId }: { task: CompilingTask, boxId: number }): Promise<CompileSucceeded | CompileFailed> {
-
+export async function compileChecker ({ task, boxId }: { task: CompilingCheckerTask, boxId: number })
+{
   const workDir = `/var/local/lib/isolate/${boxId}/box`
   const srcPath = path.join(workDir, 'checker.cpp')
   const binaryPath = path.join(workDir, 'checker')
   const logPath = path.join(workDir, 'checker-log.txt')
-  await fetchCheckerSource(srcPath);
+  await fs.writeFile(srcPath, task.source);
 
   const command = '/usr/bin/g++ -o2 -w -fmax-errors=3 -std=c++17 checker.cpp -lm -o checker' 
 
   console.log('command:', command);
   console.log(workDir, srcPath, binaryPath);
 
-  const result = await runInSandbox(
-    {
-      task: {
-        constraints: {},
-        command,
-        stderrPath: logPath,
-        env: 'PATH=/bin:/usr/local/bin:/usr/bin'
-      },
-      boxId
-    })
+  const result = await runInSandbox({
+    task: {
+      constraints: {},
+      command,
+      stderrPath: logPath,
+      env: 'PATH=/bin:/usr/local/bin:/usr/bin'
+    },
+    boxId
+  })
 
-  console.log('compiled')
-  if (result.status !== SandboxStatus.Succeeded) {
-    return {
-      status: CompilingStatus.Failed,
-      log: (await fs.readFile(logPath)).toString()
-    }
-  }
+  console.log('compiled checker')
+  if (result.status !== SandboxStatus.Succeeded)     
+    throw `Checker compilation for problem ${task.problemId} failed`
 
   await minio.fPutObject('checkers', task.problemId, binaryPath)
-  return { status: CompilingStatus.Succeeded }
+  console.log("checker put'ed")
 }

@@ -9,8 +9,7 @@ import {
   runInSandbox
 } from './sandbox.services.js'
 
-import { fetchBinary, fetchTestcase } from './storage.services.js'
-import {NotFoundError} from 'http-errors-enhanced'
+import { fetchBinary, fetchTestcase, fetchChecker } from './storage.services.js'
 
 export async function gradeSubmission ({ task, boxId }: { task: GradingTask, boxId: number }): Promise<GradingResult> {
 
@@ -18,6 +17,7 @@ export async function gradeSubmission ({ task, boxId }: { task: GradingTask, box
   const config = languageConfigs[task.language]
   const binaryPath = path.join(workDir, config.binaryFile)
   const inputPath = path.join(workDir, 'in.txt')
+  const outputPath = path.join(workDir, 'out.txt');
   const answerPath = path.join(workDir, 'ans.txt')
   const checkerPath = path.join(workDir, 'checker');
 
@@ -47,27 +47,27 @@ export async function gradeSubmission ({ task, boxId }: { task: GradingTask, box
 
   //return  new Promise((resolve, reject) => resolve({ message: '', status: GradingStatus.Accepted, memory: 1, time: 1, wallTime: 1}));
   
-  if (sandboxResult.status === SandboxStatus.Succeeded) {
-    const { time, wallTime, memory } = sandboxResult
-    try {
-      await exec(`diff -Z -B ${answerPath} ${path.join(workDir, 'out.txt')}`)
-      return {
-        status: GradingStatus.Accepted,
-        time,
-        wallTime,
-        memory,
-        message: 'Submission accepted'
-      }
-    } catch (err) {
-      return {
-        status: GradingStatus.WrongAnswer,
-        time,
-        wallTime,
-        memory,
-        message: 'Wrong answer'
-      }
-    }
-  } else {
+  if (sandboxResult.status !== SandboxStatus.Succeeded) 
     return sandboxResult
+
+  const { time, wallTime, memory } = sandboxResult
+  try {
+    // TODO: IDK if the checker crashes or what on wrong answer. test this
+    await exec(`./${checkerPath} -Z -B ${answerPath} ${outputPath}`)
+    return {
+      status: GradingStatus.Accepted,
+      time,
+      wallTime,
+      memory,
+      message: 'Submission accepted'
+    }
+  } catch (err) {
+    return {
+      status: GradingStatus.WrongAnswer,
+      time,
+      wallTime,
+      memory,
+      message: 'Wrong answer'
+    }
   }
 }
