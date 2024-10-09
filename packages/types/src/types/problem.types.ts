@@ -38,7 +38,7 @@ export const ProblemSchema = Type.Object({
       points: Type.Number()
     }))
   ),
-
+  checker: Type.Optional(Type.Object({ name: Type.String(), versionId: Type.String() })),
   id: Type.String(),
   domainId: Type.String()
 })

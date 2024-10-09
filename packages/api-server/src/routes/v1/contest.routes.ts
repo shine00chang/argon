@@ -65,6 +65,7 @@ import { userAuthHook } from '../../hooks/authentication.hooks.js'
 import { contestInfoHook } from '../../hooks/contest.hooks.js'
 import { requestUserProfile } from '../../utils/auth.utils.js'
 import {fetchUser} from '../../services/user.services.js'
+/*=*/
 
 async function contestProblemRoutes (problemRoutes: FastifyTypeBox): Promise<void> {
   problemRoutes.addHook('onRequest', contestInfoHook)

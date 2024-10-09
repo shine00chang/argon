@@ -1,7 +1,8 @@
 import { connectMongoDB, connectRabbitMQ, connectRanklistRedis, deadResultsQueue, deadTasksQueue, judgerResultsQueue, rabbitMQ, sentry } from '@argoncs/common'
-import { type CompilingResultMessage, type CompilingTask, type GradingResultMessage, type GradingTask, JudgerResultType } from '@argoncs/types'
+import { type CompilingResultMessage, type CompilingTask, type GradingResultMessage, type GradingTask, JudgerResultType, CompilingCheckerResultMessage } from '@argoncs/types'
 import assert from 'assert'
-import { completeGrading, handleCompileResult, handleGradingResult } from './services/result.services.js'
+import { completeGrading, handleCompileCheckerResult, handleCompileResult, handleGradingResult } from './services/result.services.js'
+/*=*/
 
 sentry.init({
   dsn: 'https://f56d872b49cc4981baf851fd569080cd@o1044666.ingest.sentry.io/450531102457856',
@@ -11,10 +12,11 @@ sentry.init({
 
 export async function startHandler (): Promise<void> {
   assert(process.env.RABBITMQ_URL != null)
-  await connectRabbitMQ(process.env.RABBITMQ_URL)
   assert(process.env.MONGO_URL != null)
-  await connectMongoDB(process.env.MONGO_URL)
   assert(process.env.RANKLISTREDIS_URL != null)
+
+  await connectRabbitMQ(process.env.RABBITMQ_URL)
+  await connectMongoDB(process.env.MONGO_URL)
   await connectRanklistRedis(process.env.RANKLISTREDIS_URL)
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -22,17 +24,23 @@ export async function startHandler (): Promise<void> {
     console.log('judger result queue consumed');
     if (message != null) {
       try {
-        const resultMessage: CompilingResultMessage | GradingResultMessage = JSON.parse(message.content.toString())
+        const result: CompilingCheckerResultMessage | CompilingResultMessage | GradingResultMessage = 
+          JSON.parse(message.content.toString())
 
-        if (resultMessage.type === JudgerResultType.Compiling) {
-          await handleCompileResult(resultMessage.result, resultMessage.submissionId)
-        } else if (resultMessage.type === JudgerResultType.Grading) {
-          await handleGradingResult(resultMessage.result, resultMessage.submissionId, resultMessage.testcaseIndex)
-        } else {
+        if (result.type === JudgerResultType.Compiling)
+          await handleCompileResult(result.result, result.submissionId)
+
+        else if (result.type === JudgerResultType.Grading)
+          await handleGradingResult(result.result, result.submissionId, result.testcaseIndex)
+
+        else if (result.type === JudgerResultType.CompilingChecker)
+          await handleCompileCheckerResult(result.result, result.problemId)
+
+        else 
           throw Error('Invalid result type')
-        }
 
         rabbitMQ.ack(message)
+
       } catch (err) {
         sentry.captureException(err)
         rabbitMQ.reject(message, false)
@@ -45,9 +53,14 @@ export async function startHandler (): Promise<void> {
     console.log('dead results queue consumed')
     if (message != null) {
       try {
-        const letter: CompilingResultMessage | GradingResultMessage = JSON.parse(message.content.toString())
+        const result: CompilingCheckerResultMessage | CompilingResultMessage | GradingResultMessage =
+          JSON.parse(message.content.toString())
 
-        await completeGrading(letter.submissionId, 'One or more of the grading results failed to be processed')
+        if (result.type === JudgerResultType.CompilingChecker)
+          // TODO: find a better way to notify this
+          console.log('checker compilation message failed to be acknowledged. weird')
+        else 
+          await completeGrading(result.submissionId, 'One or more of the grading results failed to be processed')
         rabbitMQ.ack(message)
       } catch (err) {
         sentry.captureException(err)

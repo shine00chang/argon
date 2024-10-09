@@ -2,7 +2,7 @@ import { destroySandbox, initSandbox } from './services/sandbox.services.js'
 import { gradeSubmission } from './services/grading.services.js'
 import { compileChecker, compileSubmission } from './services/compile.services.js'
 
-import { type GradingTask, type CompilingTask, JudgerTaskType, type GradingResultMessage, JudgerResultType, type CompilingResultMessage, CompilingCheckerTask } from '@argoncs/types'
+import { type GradingTask, type CompilingTask, JudgerTaskType, type GradingResultMessage, JudgerResultType, type CompilingResultMessage, CompilingCheckerTask, CompilingCheckerResultMessage } from '@argoncs/types'
 import { rabbitMQ, judgerTasksQueue, judgerExchange, judgerResultsKey, sentry, connectRabbitMQ, connectMinIO } from '@argoncs/common'
 
 import os = require('node:os')
@@ -68,21 +68,26 @@ export async function startJudger (): Promise<void>
       //await initSandbox({ boxId })
 
       if (task.type === JudgerTaskType.CompilingChecker) {
-        compileChecker({ task, boxId });
+        const result: CompilingCheckerResultMessage = {
+          type: JudgerResultType.CompilingChecker,
+          result: await compileChecker({ task, boxId }),
+          problemId: task.problemId,
+        }
+        rabbitMQ.publish(judgerExchange, judgerResultsKey, Buffer.from(JSON.stringify(result)))
       } else 
       if (task.type === JudgerTaskType.Grading) {
-        const result = {
+        const result: GradingResultMessage = {
           type: JudgerResultType.Grading,
-          result: (await gradeSubmission({ task, boxId })),
+          result: await gradeSubmission({ task, boxId }),
           submissionId: task.submissionId,
           testcaseIndex: task.testcaseIndex
         }
         rabbitMQ.publish(judgerExchange, judgerResultsKey, Buffer.from(JSON.stringify(result)))
       } else 
       if (task.type === JudgerTaskType.Compiling) {
-        const result = {
+        const result: CompilingResultMessage = {
           type: JudgerResultType.Compiling,
-          result: (await compileSubmission({ task, boxId })),
+          result: await compileSubmission({ task, boxId }),
           submissionId: task.submissionId
         }
         rabbitMQ.publish(judgerExchange, judgerResultsKey, Buffer.from(JSON.stringify(result)))

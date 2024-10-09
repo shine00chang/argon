@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs'
 
 import { runInSandbox } from './sandbox.services.js'
 
-import { type CompilingTask, SandboxStatus, type CompileSucceeded, type CompileFailed, CompilingStatus, type CompilingCheckerTask } from '@argoncs/types'
+import { type CompilingTask, SandboxStatus, type CompileSucceeded, type CompileFailed, CompilingStatus, type CompilingCheckerTask, CompilingCheckerResult } from '@argoncs/types'
 import { minio } from '@argoncs/common'
 import { languageConfigs } from '../../configs/language.configs.js'
 
@@ -50,7 +50,7 @@ export async function compileSubmission ({ task, boxId }: { task: CompilingTask,
   }
 }
 
-export async function compileChecker ({ task, boxId }: { task: CompilingCheckerTask, boxId: number })
+export async function compileChecker ({ task, boxId }: { task: CompilingCheckerTask, boxId: number }): Promise<CompilingCheckerResult>
 {
   const workDir = `/var/local/lib/isolate/${boxId}/box`
   const srcPath = path.join(workDir, 'checker.cpp')
@@ -74,9 +74,29 @@ export async function compileChecker ({ task, boxId }: { task: CompilingCheckerT
   })
 
   console.log('compiled checker')
-  if (result.status !== SandboxStatus.Succeeded)     
-    throw `Checker compilation for problem ${task.problemId} failed`
 
-  await minio.fPutObject('checkers', task.problemId, binaryPath)
+  if (result.status !== SandboxStatus.Succeeded)
+    return {
+      status: CompilingStatus.Failed,
+      log: (await fs.readFile(logPath)).toString()
+    }
+  
+  const { versionId } = await minio.putObject('checkers', task.problemId, binaryPath)
+
+  if (versionId === null) 
+    return {
+      status: CompilingStatus.Failed,
+      log: 'failed to put into bucket'
+    }
+
   console.log("checker put'ed")
+
+  const log = (await fs.readFile(logPath)).toString()
+  return {
+    status: CompilingStatus.Succeeded,
+    checker: {
+      name: task.problemId,
+      versionId
+    }
+  }
 }

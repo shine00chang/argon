@@ -4,7 +4,7 @@ import fastifyHttpErrorsEnhanced from '@chenhongqiao/fastify-http-errors-enhance
 import fastifyAuth from '@fastify/auth'
 import fastifyCors from '@fastify/cors'
 
-import { testcaseRoutes } from './routes/testcase.routes.js'
+//import { testcaseRoutes } from './routes/testcase.routes.js'
 import { heartbeatRoutes } from './routes/heartbeat.routes.js'
 
 import { connectMinIO, connectMongoDB, sentry } from '@argoncs/common'
@@ -27,8 +27,9 @@ sentry.init({
 
 export async function startUploadServer (): Promise<void> {
   assert(process.env.MINIO_URL != null)
-  await connectMinIO(process.env.MINIO_URL)
   assert(process.env.MONGO_URL != null)
+
+  await connectMinIO(process.env.MINIO_URL)
   await connectMongoDB(process.env.MONGO_URL)
 
   await app.register(fastifyHttpErrorsEnhanced, {
@@ -49,9 +50,9 @@ export async function startUploadServer (): Promise<void> {
     credentials: true
   })
 
-  await app.register(polygonRoutes, { prefix: '/polygon' })
-  await app.register(testcaseRoutes, { prefix: '/testcases' })
   await app.register(heartbeatRoutes, { prefix: '/heartbeat' })
+  await app.register(polygonRoutes, { prefix: '/polygon' })
+  //await app.register(testcaseRoutes, { prefix: '/testcases' })
 
   try {
     const port: number = parseInt(process.env.UPLOAD_SERVER_PORT ?? '8001')

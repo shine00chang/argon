@@ -77,9 +77,8 @@ export async function fetchBinary ({ objectName, destPath }: { objectName: strin
 async function cacheChecker ({ objectName, versionId }: { objectName: string, versionId: string }): Promise<void> {
   // TODO: try catch. checker may not exist, throw something.
   try {
-    const key = path.join(cacheDir, 'checkers', objectName, versionId)
+    const key = path.join(cacheDir, 'checkers', objectName)
     const size = (await minio.statObject('checkers', objectName, { versionId })).size
-
 
     // @ts-expect-error typing bug
     minio.fGetObject('checkers', objectName, key, { versionId })
@@ -87,12 +86,12 @@ async function cacheChecker ({ objectName, versionId }: { objectName: string, ve
 
   } catch (err) {
     console.log('cache checker error:', err)
-    throw "not found cache"
+    throw "none such checker"
   }
 }
 
 export async function fetchChecker ({ objectName, versionId, destPath }: { objectName: string, versionId: string, destPath: string }): Promise<void> {
-  const key = path.join(cacheDir, 'checkers', objectName, versionId)
+  const key = path.join(cacheDir, 'checkers', objectName)
   if (cache.get(key) != null) {
     await fs.copyFile(key, destPath); return
   }
@@ -102,7 +101,7 @@ export async function fetchChecker ({ objectName, versionId, destPath }: { objec
       await fs.copyFile(key, destPath)
     }
   } else {
-    downloading.set(key, cacheTestcase({ objectName, versionId }))
+    downloading.set(key, cacheChecker({ objectName, versionId }))
     await downloading.get(key)
     downloading.delete(key)
     await fs.copyFile(key, destPath)

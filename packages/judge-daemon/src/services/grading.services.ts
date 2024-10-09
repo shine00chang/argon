@@ -25,10 +25,7 @@ export async function gradeSubmission ({ task, boxId }: { task: GradingTask, box
   await fetchTestcase({ objectName: task.testcase.input.objectName, versionId: task.testcase.input.versionId, destPath: inputPath })
   await fetchTestcase({ objectName: task.testcase.output.objectName, versionId: task.testcase.output.versionId, destPath: answerPath })
   await makeExecutable(path.join(workDir, config.binaryFile))
-  await fetchChecker({
-    objectName: task.checker.objectName,
-    versionId: task.checker.versionId,
-    destPath: checkerPath })
+  await fetchChecker({ objectName: task.checker.objectName, versionId: task.checker.versionId, destPath: checkerPath })
 
   let command = config.executeCommand
   command = command.replaceAll('{binary_path}', config.binaryFile)

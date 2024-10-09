@@ -1,6 +1,6 @@
-import { uploadFile } from './testcase.services.js'
+import { uploadTestcase } from './testcase.services.js'
 import { nanoid } from 'nanoid'
-import { CheckerCompileTask, JudgerTaskType, Problem, type Constraints, type NewProblem } from '@argoncs/types' /*=*/
+import { CompilingCheckerTask, JudgerTaskType, Problem, type Constraints, type NewProblem } from '@argoncs/types' /*=*/
 import { type MultipartFile } from '@fastify/multipart' /*=*/
 import { exec as exec_sync } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -70,8 +70,8 @@ export async function uploadPolygon ({ domainId, archive }: { domainId: string, 
     const input_file = await fs.open(path.join(work_path, 'tests', name))
     const output_file = await fs.open(path.join(work_path, 'tests', name + '.a'))
 
-    const input = await uploadFile(domainId, problem.id, name, input_file.createReadStream())
-    const output = await uploadFile(domainId, problem.id, name + '-ans', output_file.createReadStream())
+    const input = await uploadTestcase({problemId:problem.id, filename: name, stream: input_file.createReadStream()})
+    const output = await uploadTestcase({problemId: problem.id, filename: name + '-ans', stream: output_file.createReadStream()})
 
     problem.testcases.push({
       input,
@@ -90,7 +90,7 @@ export async function uploadPolygon ({ domainId, archive }: { domainId: string, 
 
   // Compile checker
   const checkerSource = (await fs.readFile(path.join(work_path, 'checker.cpp'))).toString()
-  const compileTask: CheckerCompileTask = {
+  const compileTask: CompilingCheckerTask = {
     type: JudgerTaskType.CompilingChecker,
     source: checkerSource,
     problemId: problem.id
