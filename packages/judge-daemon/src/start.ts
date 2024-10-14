@@ -6,6 +6,8 @@ import { type GradingTask, type CompilingTask, JudgerTaskType, type GradingResul
 import { rabbitMQ, judgerTasksQueue, judgerExchange, judgerResultsKey, sentry, connectRabbitMQ, connectMinIO } from '@argoncs/common'
 
 import os = require('node:os')
+import fs from 'node:fs/promises'
+import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { pino } from 'pino'
 import assert from 'assert'
@@ -29,6 +31,13 @@ export async function startJudger (): Promise<void>
 
   await connectRabbitMQ(process.env.RABBITMQ_URL)
   await connectMinIO(process.env.MINIO_URL)
+
+  try {
+    const fd = await fs.open(path.join(process.cwd(), 'testlib.h'))
+    fd.close()
+  } catch (err) {
+    console.log('testlib.h not found')
+  }
 
   console.log('CWD: ', process.cwd()); 
   await prepareStorage({ dir: process.cwd() + '/argon-cache' })
@@ -96,16 +105,15 @@ export async function startJudger (): Promise<void>
       }
 
       console.log('done task')
-      // NOTE: temporary
-      // await destroySandbox({ boxId })
+      await destroySandbox({ boxId })
       availableBoxes.add(boxId)
       rabbitMQ.ack(message)
 
     } catch (err) {
       sentry.captureException(err)
 
-      console.log('task failed')
-      //await destroySandbox({ boxId })
+      console.log('task failed with: ', err)
+      await destroySandbox({ boxId })
       availableBoxes.add(boxId)
 
       rabbitMQ.reject(message, false)

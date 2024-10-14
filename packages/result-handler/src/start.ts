@@ -1,5 +1,5 @@
 import { connectMongoDB, connectRabbitMQ, connectRanklistRedis, deadResultsQueue, deadTasksQueue, judgerResultsQueue, rabbitMQ, sentry } from '@argoncs/common'
-import { type CompilingResultMessage, type CompilingTask, type GradingResultMessage, type GradingTask, JudgerResultType, CompilingCheckerResultMessage } from '@argoncs/types'
+import { type CompilingResultMessage, type CompilingTask, type GradingResultMessage, type GradingTask, type CompilingCheckerTask, JudgerResultType, CompilingCheckerResultMessage, JudgerTaskType } from '@argoncs/types'
 import assert from 'assert'
 import { completeGrading, handleCompileCheckerResult, handleCompileResult, handleGradingResult } from './services/result.services.js'
 /*=*/
@@ -57,8 +57,7 @@ export async function startHandler (): Promise<void> {
           JSON.parse(message.content.toString())
 
         if (result.type === JudgerResultType.CompilingChecker)
-          // TODO: find a better way to notify this
-          console.log('checker compilation message failed to be acknowledged. weird')
+          console.log('checker compilation results failed to be processed with:\n', result.result)
         else 
           await completeGrading(result.submissionId, 'One or more of the grading results failed to be processed')
         rabbitMQ.ack(message)
@@ -74,8 +73,12 @@ export async function startHandler (): Promise<void> {
     console.log('dead tasks queue consumed')
     if (message != null) {
       try {
-        const letter: CompilingTask | GradingTask = JSON.parse(message.content.toString())
-        await completeGrading(letter.submissionId, 'One or more of the grading tasks failed to complete')
+        const task: CompilingTask | CompilingCheckerTask | GradingTask = JSON.parse(message.content.toString())
+
+        if (task.type === JudgerTaskType.CompilingChecker) 
+          console.log('checker compilation task rejected');
+        else
+          await completeGrading(task.submissionId, 'One or more of the grading tasks failed to complete')
         rabbitMQ.ack(message)
       } catch (err) {
         sentry.captureException(err)

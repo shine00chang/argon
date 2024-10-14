@@ -2,3 +2,4 @@ node_modules
 dist
 box-metas
 argon-cache
+testlib.h
