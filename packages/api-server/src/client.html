@@ -328,13 +328,16 @@
 
     let html = '';
     for (const { problemName, problemId, createdAt, status, score, testcases, id, log } of submissions) {
-      html += `<div><b>${problemName}</b> @ ${(new Date(createdAt)).toLocaleString()}: <b>${status}</b> <i>(${id})</i><br> <b>${score !== undefined ? score : '...'}</b> => `
+      html += `<div><b>${problemName}</b> @ ${(new Date(createdAt)).toLocaleString()}: <b>${status}</b> <i>(${id})</i> <b>${score !== undefined ? score : '...'} => <br>`
 
       if (log) html += `<b style='color: red'>${log}</b><br>`
       if (status !== 'Graded') continue;
       if (!testcases) continue;
       for (const { result } of testcases) {
-        html += `${result.status}:${result.wallTime}ms <b>||</b> `
+        html += `${result.status}`
+        if (result.wallTime)
+          html += `${result.wallTime}ms`
+        html += ` | `
       }
       html += `</div>`;
     }

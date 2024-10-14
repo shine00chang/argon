@@ -71,21 +71,18 @@
 
 
 <h2>Domains</h2>
-<input type="text" id="domain-name">
+<input type="text" id="domain-name" placeholder="new domain">
 <button id='domain-add'>add</button> <br>
+
+<input type="text" id="domain-user" placeholder="domain user">
+<button id='domain-user-add'>add</button> <br>
+
 <button id='domain-get'>get</button> <br>
 
 <div id='domain-list'>
 </div>
 
 <h2>Problems</h2>
-<!--
-<input type="text" id="problem-name" placeholder="name"><br>
-<input type="text" id="problem-context" placeholder="context"><br>
-<input type="text" id="problem-input" placeholder="input"><br>
-<input type="text" id="problem-output" placeholder="output"><br>
-<button id='problem-add'>add</button> <br>
--->
 <button id='problem-polygon'>polygon add</button> (zipped package)
 <input type="file" id="problem-polygon-input"> <br>
 <button id='problem-get'>get</button> 
@@ -124,18 +121,6 @@
 
 <h2>Publish</h2>
 <button id='contest-publish'>publish</button>
-
-<h2>Testcases</h2>
-<!--
-<input type="file" id="testcase-input"> <br>
-<input type="file" id="testcase-output"> <br>
-<button id='testcase-upload'>upload</button>
-<button id='testcase-delete' disabled>delete</button>
--->
-
-<button id='testcase-get'>get</button>
-<div id='testcase-list'>
-</div>
 
 <script>
   const uploadURL = 'http://13.93.218.61:8001';
@@ -226,7 +211,7 @@
       })
   }
 
-  document.getElementById('domain-add').onclick = _ => {
+  document.getElementById('domain-add').onclick = async _ => {
 
     console.log('domain-add');
 
@@ -240,18 +225,35 @@
 
     const options = {
       method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        cookie: document.cookie, 
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     };
 
-    fetch('/v1/domains/', options)
-      .then(response => response.json())
-      .then(response => console.log(response))
-      .catch(err => console.error(err));
+    await betterFetch('/v1/domains/', options)
+      .then(_ => alert('domain added'))
+  }
+
+  document.getElementById('domain-user-add').onclick = async _ => {
+
+    console.log('domain-user-add');
+
+    if (getDomainId() === undefined) return alert('no domain selected');
+
+    const body = {
+      userId: document.getElementById('domain-user').value,
+      scopes: [ 'domain.manage', 'problem.manage', 'problem.read', 'problem.test', 'contest.manage', 'contest.read']
+    };
+
+    if (!body.userId) return alert('no userId');
+
+    const options = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    };
+
+    await betterFetch(`/v1/domains/${getDomainId()}/members`, options)
+      .then(_ => alert('user added to domain'))
   }
 
   document.getElementById('domain-get').onclick = async _ => {
@@ -276,41 +278,6 @@
     document.getElementById('domain-list').innerHTML = html;
   }
 
-/*
-  document.getElementById('problem-add').onclick = async _ => {
-
-    console.log('problem-add');
-
-    const body = {
-      name: document.getElementById('problem-name').value,
-      context: document.getElementById('problem-context').value,
-      inputFormat: document.getElementById('problem-input').value,
-      outputFormat: document.getElementById('problem-output').value,
-      constraints: {
-        "memory":256,
-        "time":2000,
-        "wallTime":200,
-        "totalStorage":10,
-        "processes":1
-      },
-      samples: []
-    };
-
-    if (!body.name || !body.context || !body.inputFormat || !body.outputFormat)
-      return alert('unfilled fields')
-
-    const options = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    };
-
-    fetch(`/v1/domains/${getDomainId()}/problems`, options)
-      .then(res => res.json())
-      .then(res => console.log(res))
-      .catch(console.error);
-  }
-  */
   document.getElementById('problem-delete').onclick = async _ => {
 
     console.log('problem-delete');
@@ -514,73 +481,6 @@
     if (getContestProblemId() === undefined) return alert('no contest problem selected');
 
     await betterFetch(`/v1/contests/${getContestId()}/problems/${getContestProblemId()}`, { method: 'DELETE' })
+      .then(_ => alert('problem removed from contest'))
   }
-
-  /*
-  document.getElementById('testcase-upload').onclick = async _ => {
-
-    console.log('testcase-upload');
-
-    if (getDomainId() === undefined) return alert('no domain selected');
-    if (getProblemId() === undefined) return alert('no problem selected');
-    
-    if (!document.getElementById('testcase-input').files[0] || !document.getElementById('testcase-output').files[0])
-      return alert('files not selected');
-
-    const { uploadId } = await betterFetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}/upload-session`);
-
-    const formData = new FormData();
-    formData.append('input', document.getElementById('testcase-input').files[0]);
-    formData.append('output', document.getElementById('testcase-output').files[0]);
-
-    const res = await betterFetch(uploadURL + `/testcases/${uploadId}`, {
-      method: "POST",
-      body: formData 
-    });
-
-    console.log('uploaded, add testcase to problem')
-
-    if (!res) return alert('no response');
-    const [ input, output ] = res;
-    
-    if (!input || !output) return alert('cannot parse input & output from upload response')
-
-    console.log(input, output);
-    // get problem
-    const problem = await betterFetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}`)
-
-    // update & put problem
-    if (!problem.testcases)
-      problem.testcases = [];
-    problem.testcases.push({
-      input,
-      output,
-      points: 1
-    });
-
-    await betterFetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}`, {
-      method: "PUT",
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(problem)
-    })
-      .alert('testcase added')
-  }
-  */
-
-  document.getElementById('testcase-get').onclick = async _ => {
-
-    console.log('testcase-get');
-
-    if (getDomainId() === undefined) return alert('no domain selected');
-    if (getProblemId() === undefined) return alert('no problem selected');
-
-    const { testcases } = await betterFetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}`);
-
-    let html = '';
-    for (const { input, output, points } of testcases) {
-      html += `<div>${input.name} => ${output.name}: ${points}pts</div>`
-    }
-
-    document.getElementById('testcase-list').innerHTML = html;
-  } 
 </script>
