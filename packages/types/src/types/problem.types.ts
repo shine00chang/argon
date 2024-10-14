@@ -49,8 +49,7 @@ export type ContestProblem = Static<typeof ContestProblemSchema>
 
 export interface UploadSession {
   id: string
-  problemId?: string
-  polygon?: boolean
+  replaceId?: string
   domainId: string
   createdAt: number
 }

@@ -73,38 +73,47 @@ export async function handleCompileResult (compileResult: CompilingResult, submi
 export async function completeGrading (submissionId: string, log?: string): Promise<void> {
   const submission = await fetchSubmission({ submissionId })
 
-  if (submission.status === SubmissionStatus.Compiling) {
-    await submissionCollection.updateOne({ id: submissionId }, { $set: { status: SubmissionStatus.Terminated, log } })
-  } else if (submission.status === SubmissionStatus.Grading) {
-    if (submission.gradedCases !== submission.testcases.length) {
-      await submissionCollection.updateOne({ id: submissionId }, { $set: { status: SubmissionStatus.Terminated, log } })
-    } else {
-      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
-      const score = submission.testcases.reduce((accumulator: number, testcase) => accumulator + (testcase.score ?? 0), 0)
-      await submissionCollection.updateOne({ id: submissionId }, {
-        $set: {
-          score,
-          status: SubmissionStatus.Graded
-        },
-        $unset: {
-          gradedCases: ''
-        }
-      })
+  if (submission.status !== SubmissionStatus.Compiling &&
+      submission.status !== SubmissionStatus.Grading) {
+    console.error('completeGrading recieved unexpected status: ', submission.status);
+    return;
+  }
 
-      if (submission.contestId != null && submission.teamId != null) {
-        const { modifiedCount } = await teamScoreCollection.updateOne({ contestId: submission.contestId, id: submission.teamId }, {
-          $max: { [`scores.${submission.problemId}`]: score }
-        })
-        if (modifiedCount > 0) {
-          await teamScoreCollection.updateOne({ contestId: submission.contestId, id: submission.teamId }, {
-            $max: { [`time.${submission.problemId}`]: submission.createdAt }
-          })
-          const { contestId, teamId } = submission
-          await recalculateTeamTotalScore({ contestId, teamId })
-          await ranklistRedis.set(`${submission.contestId}-obsolete`, 1)
-        }
-      }
+  // Failed on Transition from Compiling to Grading or Grading Failed
+  if (submission.status === SubmissionStatus.Compiling ||
+      submission.gradedCases !== submission.testcases.length) {
+    await submissionCollection.updateOne({ id: submissionId }, { $set: { status: SubmissionStatus.Terminated, log } })
+    return;
+  } 
+
+  // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
+  const score = submission.testcases.reduce((accumulator: number, testcase) => accumulator + (testcase.score ?? 0), 0)
+  await submissionCollection.updateOne({ id: submissionId }, {
+    $set: {
+      score,
+      status: SubmissionStatus.Graded
+    },
+    $unset: {
+      gradedCases: ''
     }
+  })
+
+  // Skip score update if testing submission
+  if (submission.contestId == null || submission.teamId == null) 
+    return
+
+  const { modifiedCount } = await teamScoreCollection.updateOne({ contestId: submission.contestId, id: submission.teamId }, {
+    $max: { [`scores.${submission.problemId}`]: score }
+  })
+
+  // Only update if score increased 
+  if (modifiedCount > 0) {
+    await teamScoreCollection.updateOne({ contestId: submission.contestId, id: submission.teamId }, {
+      $max: { [`time.${submission.problemId}`]: submission.createdAt }
+    })
+    const { contestId, teamId } = submission
+    await recalculateTeamTotalScore({ contestId, teamId })
+    await ranklistRedis.set(`${submission.contestId}-obsolete`, 1)
   }
 }
 

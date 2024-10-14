@@ -1,4 +1,3 @@
-import { uploadTestcase } from './testcase.services.js'
 import { nanoid } from 'nanoid'
 import { CompilingCheckerTask, JudgerTaskType, Problem, type Constraints, type NewProblem } from '@argoncs/types' /*=*/
 import { type MultipartFile } from '@fastify/multipart' /*=*/
@@ -6,14 +5,17 @@ import { exec as exec_sync } from 'node:child_process'
 import { promisify } from 'node:util'
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { BadRequestError } from 'http-errors-enhanced'
+import { BadRequestError, UnauthorizedError } from 'http-errors-enhanced'
 import { domainProblemCollection, judgerTasksKey, judgerExchange, rabbitMQ } from '@argoncs/common'
+import { minio, uploadSessionCollection } from '@argoncs/common'
+import type internal from 'node:stream'
 
 const exec = promisify(exec_sync)
 
 /* Extracts content from polygon package archive, updates problem data, and uploads testcases */
-export async function uploadPolygon ({ domainId, archive }: { domainId: string, archive: MultipartFile}): Promise<string> {
-
+export async function uploadPolygon ({ domainId, replaceId, archive }: { domainId: string, replaceId?: string, archive: MultipartFile}):
+  Promise<string>
+{
   // Make working directory
   const work_path = path.join(process.cwd(), `temp-${nanoid()}`)
   await fs.mkdir(work_path)
@@ -47,7 +49,7 @@ export async function uploadPolygon ({ domainId, archive }: { domainId: string, 
 
   // Create Problem
   const problem: Problem = {
-    id: nanoid(),
+    id: replaceId ?? nanoid(),
     domainId,
     name: statement.name,
     context,
@@ -81,9 +83,9 @@ export async function uploadPolygon ({ domainId, archive }: { domainId: string, 
   }
   console.log('problem: ', problem)
 
-  // Update problem
-  // Assuming the token is correct, the problem must exist.
-  await domainProblemCollection.insertOne(problem)
+  // If ID exists, replace problem, else insert problem
+  // The ID is set to replace ID if it exists. see above
+  await domainProblemCollection.updateOne({ id: problem.id }, problem, { upsert: true })
 
   // Compile checker
   const checkerSource = (await fs.readFile(path.join(work_path, 'check.cpp'))).toString()
@@ -98,4 +100,28 @@ export async function uploadPolygon ({ domainId, archive }: { domainId: string, 
   await exec(`rm -rf ${work_path}`)
 
   return problem.id
+}
+
+/* Uploads a single file into 'testcases' */
+export async function uploadTestcase ({ problemId, filename, stream }:{
+  problemId: string,
+  filename: string,
+  stream: internal.Readable
+}): Promise<{ versionId: string, name: string }> {
+  const objectName = path.join(problemId, filename)
+  const { versionId } = await minio.putObject('testcases', objectName, stream)
+  if (versionId == null) {
+    throw Error('Versioning not enabled on testcases bucket')
+  }
+
+  return { versionId, name: filename }
+}
+
+/* Consumes an upload session, returns the domain and the problem to be replaced, if it exists */
+export async function consumePolygonUploadSession (uploadId: string): Promise<{ domainId: string, replaceId?: string }> {
+  const upload = await uploadSessionCollection.findOneAndDelete({ id: uploadId })
+  if (upload == null) {
+    throw new UnauthorizedError('Invalid upload session token')
+  }
+  return upload
 }

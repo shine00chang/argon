@@ -16,17 +16,10 @@ export async function testcaseExists ({ problemId, filename, versionId }: { prob
   }
 }
 
-/*
-export async function createUploadSession ({ problemId, domainId }: { problemId: string, domainId: string }): Promise<{ uploadId: string }> {
+export async function createPolygonUploadSession ({ domainId, replaceId = undefined }: { domainId: string, replaceId?: string }):
+  Promise<{ uploadId: string }> 
+{
   const id = nanoid(32)
-  await fetchDomainProblem({ problemId, domainId }) // Could throw not found
-  await uploadSessionCollection.insertOne({ id, problemId, domainId, createdAt: (new Date()).getTime() })
-  return { uploadId: id }
-}
-*/
-
-export async function createPolygonUploadSession ({ domainId }: { domainId: string }): Promise<{ uploadId: string }> {
-  const id = nanoid(32)
-  await uploadSessionCollection.insertOne({ id, domainId, polygon: true, createdAt: (new Date()).getTime() })
+  await uploadSessionCollection.insertOne({ id, domainId, replaceId, createdAt: (new Date()).getTime() })
   return { uploadId: id }
 }

@@ -1,5 +1,4 @@
-import { consumePolygonUploadSession, consumeUploadSession, uploadTestcase } from '../services/testcase.services.js'
-import { uploadPolygon } from '../services/polygon.services.js'
+import { uploadPolygon, consumePolygonUploadSession } from '../services/polygon.services.js'
 
 import { Type } from '@sinclair/typebox'
 import multipart, { type MultipartFile } from '@fastify/multipart'
@@ -33,7 +32,7 @@ export async function polygonRoutes (routes: FastifyTypeBox): Promise<void> {
     },
     async (request, reply) => {
       const { uploadId } = request.params
-      const { domainId } = await consumePolygonUploadSession(uploadId)
+      const { domainId, replaceId } = await consumePolygonUploadSession(uploadId)
 
       try {
         const archive: MultipartFile | undefined = await request.file()
@@ -41,7 +40,7 @@ export async function polygonRoutes (routes: FastifyTypeBox): Promise<void> {
           throw new BadRequestError('No file found in request')
         }
 
-        const problemId = await uploadPolygon({ domainId, archive })
+        const problemId = await uploadPolygon({ domainId, replaceId, archive })
 
         return await reply.status(201).send({ problemId })
       } catch (err) {

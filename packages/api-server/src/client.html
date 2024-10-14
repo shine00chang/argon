@@ -1,9 +1,27 @@
 <head>
-  <link href='https://fonts.googleapis.com/css?family=Poppins' rel='stylesheet'>
+  <script>
+    window.MathJax = {
+      tex: {
+        loader: {load: ['[tex]/textmacros']},
+        inlineMath: [
+          ['$', '$'],
+          ['\\(', '\\)']
+        ],
+        displayMath: [             // start/end delimiter pairs for display math
+          ['$$', '$$'],
+          ['\\[', '\\]']
+        ],
+        processEscapes: true,      // use \$ to produce a literal dollar sign
+        processEnvironments: true, // process \begin{xxx}...\end{xxx} outside math mode
+        processRefs: true,         // process \ref{...} outside of math mode
+        packages: {'[+]': ['textmacros']},
+      }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <style> 
     body{
       margin:40px auto;max-width:700px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;
-      font-family: 'Poppins';
     }
     b{font-weight: 900}
     h1,h2,h3{line-height:1.2}
@@ -120,6 +138,47 @@
         alert(msg);
         throw err
       })
+
+  let typesetting = undefined;
+  const trymathjax = async _ => {
+    MathJax.typeset();
+    typesetting = false;
+  }
+
+  const mathjax = _ => {
+    if (!typesetting)
+      trymathjax()
+  }
+
+  const formatProblem = problem => 
+  {
+    const {name, constraints, context, inputFormat, outputFormat} = problem;
+    let html = `
+    <div style='text-align: center'>
+    <h3>${name}</h3>
+    time limit / test: ${constraints.time} ms <br>
+    memory limit / test: ${constraints.memory} MB 
+    </div>
+    ${context}<br>
+    <b>Input</b><br>
+    ${inputFormat}<br>
+    <b>Output</b><br>
+    ${outputFormat}<br>`;
+
+    html = html
+      .replaceAll("\\begin{center}", "<p style='text: center'>")
+      .replaceAll("\\end{center}", "</p>")
+      .replaceAll("\\begin{enumerate}", "<ol>")
+      .replaceAll("\\item", "<li>")
+      .replaceAll("\\end{enumerate}", "</ol>")
+      .replaceAll("\\begin{itemize}", "<ul>")
+      .replaceAll("\\item", "<li>")
+      .replaceAll("\\end{itemize}", "</ul>")
+      .replaceAll(/\\t{(.*?)}/g, "<code>$1</code>")
+      .replaceAll(/\\bf{(.*?)}/g, "<b>$1</b>")
+
+    return html;
+  }
 
   document.getElementById('signup').onclick = async _ => {
 
@@ -268,14 +327,7 @@
 
       const problem = await betterFetch(`/v1/contests/${getContestId()}/problems/${id}`);
 
-      const problemHTML = `
-      ${problem.constraints.time}ms <br>
-      ${problem.constraints.memory}MB <br>
-      <hr>
-      ${problem.context}<br>
-      ${problem.inputFormat}<br>
-      ${problem.outputFormat}<br>
-      <hr>`;
+      const problemHTML = formatProblem(problem);
       html += ` 
       <details>
         <summary>
@@ -287,6 +339,7 @@
     }
 
     document.getElementById('problem-list').innerHTML = html;
+    mathjax()
   }
 
   document.getElementById('submission-submit').onclick = async _ => {
