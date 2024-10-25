@@ -26,6 +26,7 @@ import {
 } from 'http-errors-enhanced'
 import {
   contestBegan,
+  contestEnded,
   contestNotBegan,
   contestPublished,
   registeredForContest,
@@ -44,7 +45,9 @@ import {
   removeProblemFromContest,
   syncProblemToContest,
   updateContest,
-  publishContest
+  publishContest,
+  fetchDomainContests,
+  fetchPublishedContests
 } from '../../services/contest.services.js'
 import {
   completeTeamInvitation,
@@ -85,7 +88,8 @@ async function contestProblemRoutes (problemRoutes: FastifyTypeBox): Promise<voi
       onRequest: [userAuthHook, problemRoutes.auth([
         [hasDomainPrivilege(['contest.read'])], // Domain scope
         [hasContestPrivilege(['read'])], // Contest privilege
-        [registeredForContest, contestBegan] // Regular participant
+        [registeredForContest, contestBegan], // Regular participant
+        [contestEnded] // Past contest
       ]) as any]
     },
     async (request, reply) => {
@@ -111,7 +115,8 @@ async function contestProblemRoutes (problemRoutes: FastifyTypeBox): Promise<voi
       onRequest: [userAuthHook, problemRoutes.auth([
         [hasDomainPrivilege(['contest.read'])], // Domain scope
         [hasContestPrivilege(['read'])], // Contest privilege
-        [registeredForContest, contestBegan] // Regular participant
+        [registeredForContest, contestBegan], // Regular participant
+        [contestEnded] // Past contest
       ]) as any]
     },
     async (request, reply) => {
@@ -513,20 +518,22 @@ async function contestTeamRoutes (teamRoutes: FastifyTypeBox): Promise<void> {
 }
 
 async function contestRanklistRoutes (ranklistRoutes: FastifyTypeBox): Promise<void> {
-  ranklistRoutes.addHook('onRequest', contestInfoHook)
   ranklistRoutes.get(
     '/',
     {
       schema: {
         params: Type.Object({ contestId: Type.String() }),
         response: {
-          200: Type.Array(Type.Intersect([TeamScoreSchema, Type.Object({name: Type.String()})])),
+          200: Type.Object({
+            ranklist: Type.Array(Type.Intersect([TeamScoreSchema, Type.Object({name: Type.String()})])),
+            problems: Type.Array(Type.Object({ id: Type.String(), name: Type.String() })) 
+          }),
           400: badRequestSchema,
           403: forbiddenSchema,
           404: notFoundSchema
         }
       },
-      onRequest: [ranklistRoutes.auth([
+      onRequest: [contestInfoHook, ranklistRoutes.auth([
         [contestBegan]
       ]) as any]
     },
@@ -534,17 +541,39 @@ async function contestRanklistRoutes (ranklistRoutes: FastifyTypeBox): Promise<v
     async (request, reply) => {
       const { contestId } = request.params
       const ranklist = await fetchContestRanklist({ contestId })
-      const _ranklist = await Promise.all(ranklist.map(async team => {
+      const ranklistResolved = await Promise.all(ranklist.map(async team => {
         const { name } = await fetchTeam({ contestId: team.contestId, teamId: team.id });
         return { ...team, name };
       }));
+
+      const { problems } = await fetchContestProblemList({ contestId });
       
-      return await reply.status(200).send(_ranklist)
+      return await reply.status(200).send({ problems, ranklist: ranklistResolved });
     }
   )
 }
 
 export async function contestRoutes (routes: FastifyTypeBox): Promise<void> {
+
+  /* get published contests */
+  routes.get(
+    '/',
+    {
+      schema: {
+        response: {
+          200: Type.Array(ContestSchema),
+          400: badRequestSchema,
+          401: unauthorizedSchema,
+          403: forbiddenSchema,
+          404: notFoundSchema
+        }
+      },
+    },
+    async (request, reply) => {
+      const contests = await fetchPublishedContests({limit: 20}); 
+      return await reply.status(200).send(contests)
+    })
+
   routes.get(
     '/:contestId',
     {
@@ -594,6 +623,39 @@ export async function contestRoutes (routes: FastifyTypeBox): Promise<void> {
       const newContest = request.body
       const status = await updateContest({ contestId, newContest })
       return await reply.status(200).send(status)
+    })
+
+  routes.get(
+    '/:contestId/submissions',
+    {
+      schema: {
+        params: Type.Object({ contestId: Type.String() }),
+        response: {
+          200: Type.Array(SubmissionSchema),
+          400: badRequestSchema,
+          401: unauthorizedSchema,
+          403: forbiddenSchema,
+          404: notFoundSchema
+        }
+      },
+      onRequest: [contestInfoHook, userAuthHook, routes.auth([
+        [hasDomainPrivilege(['contest.test'])], // Domain testers
+        [hasContestPrivilege(['test'])], // Contest tester
+        [contestRunning, registeredForContest], // Participant
+        [contestEnded] // Past
+      ]) as any // Users
+      ]
+    },
+    async (request, reply) => {
+      
+      if (request.user == null) {
+        throw new UnauthorizedError('User not logged in')
+      }
+      const { contestId } = request.params
+      const query = { contestId, userId: request.user.id }
+      const submissions = await querySubmissions({ query })
+      
+      return await reply.status(200).send(submissions)
     })
 
   routes.post(

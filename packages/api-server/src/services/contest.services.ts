@@ -29,6 +29,14 @@ export async function createContestSeries ({ newContestSeries, domainId }: { new
   return { seriesId: id }
 }
 
+export async function fetchPublishedContests ({ limit }: { limit: number }): Promise<Contest[]> {
+  const contests = await contestCollection.find({published: true})
+    .limit(limit)
+    .toArray();
+
+  return contests;
+}
+
 export async function fetchAllContestSeries (): Promise<ContestSeries[]> {
   const contestSeries = await contestSeriesCollection.find().toArray()
   return contestSeries
@@ -40,6 +48,7 @@ export async function fetchDomainContestSeries ({ domainId }: { domainId: string
 }
 
 export async function fetchContest ({ contestId }: { contestId: string }): Promise<Contest> {
+
   const cache = await fetchCacheUntilLockAcquired<Contest>({ key: `${CONTEST_CACHE_KEY}:${contestId}` })
   if (cache != null) {
     return cache
@@ -51,7 +60,8 @@ export async function fetchContest ({ contestId }: { contestId: string }): Promi
       throw new NotFoundError('Contest not found')
     }
 
-    await setCache({ key: `${CONTEST_CACHE_KEY}:${contestId}`, data: contest })
+    const good = await setCache({ key: `${CONTEST_CACHE_KEY}:${contestId}`, data: contest })
+    console.log('cache set "', `${CONTEST_CACHE_KEY}:${contestId}`, '": ', good? 'true' : 'false');
     return contest
   } finally {
     await releaseLock({ key: `${CONTEST_CACHE_KEY}:${contestId}` })

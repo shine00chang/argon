@@ -3,6 +3,11 @@ import { backOff } from 'exponential-backoff'
 import { ServiceUnavailableError } from 'http-errors-enhanced'
 import { json } from 'typia'
 
+/* Try cache
+ * If miss:
+ * Get lock, so caller can set cache, without overlap from another missed caller.
+ * If locked, another missed caller is getting. await for cache hit, since caller will set.
+ */
 export async function fetchCacheUntilLockAcquired<T> ({ key }: { key: string }): Promise<T | null> {
   let cache = await fetchCache<T>({ key })
   if (cache != null) {
@@ -40,8 +45,9 @@ export async function fetchCache<T> ({ key }: { key: string }): Promise<T | null
     if (cache == null || cache === '') {
       return null
     }
-    return json.assertParse(cache)
+    return JSON.parse(cache)
   } catch (err) {
+    console.log(err);
     // TODO: Alert cache failure
     return null
   }
@@ -50,9 +56,10 @@ export async function fetchCache<T> ({ key }: { key: string }): Promise<T | null
 export async function setCache<T> ({ key, data }: { key: string, data: T }): Promise<boolean> {
   try {
     // Add a random jitter to prevent avalanche
-    const status = await cacheRedis.setex(key, 1600 + Math.floor(Math.random() * 400), json.assertStringify<T>(data))
+    const status = await cacheRedis.setex(key, 1600 + Math.floor(Math.random() * 400), JSON.stringify(data))
     return Boolean(status)
   } catch (err) {
+    console.log('set cache err: ', err);
     return false
   }
 }
@@ -61,7 +68,7 @@ export async function deleteCache ({ key }: { key: string }): Promise<void> {
   await cacheRedis.del(key)
 }
 
-export async function acquireLock ({ key }: { key: string }): Promise<boolean> {
+async function acquireLock ({ key }: { key: string }): Promise<boolean> {
   const status = await cacheRedis.setnx(`${key}:lock`, 1)
   if (status !== 1) {
     return false

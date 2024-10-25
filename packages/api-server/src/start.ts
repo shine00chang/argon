@@ -13,7 +13,6 @@ import {
 
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
  
 
@@ -68,7 +67,7 @@ export async function loadFastify (testing = false): Promise<FastifyTypeBox> {
     },
   })
   await app.register(fastifyCors, {
-    origin: [/\.teamscode\.org$/, /\.argoncs\.io$/, 'http://localhost:3000'],
+    origin: [/\.teamscode\.org$/, /\.argoncs\.io$/, /localhost/],
     allowedHeaders: ['Content-Type', 'Set-Cookie'],
     credentials: true
   })
@@ -97,7 +96,7 @@ export async function loadFastify (testing = false): Promise<FastifyTypeBox> {
 
 
   // Development Clients
-  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
   app.get('/admin', async function handler (_, reply) {
     const fd = await fs.open(path.join(__dirname, '../../src/admin.html'))
     const stream = fd.createReadStream()
