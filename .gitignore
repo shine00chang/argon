@@ -6,3 +6,4 @@ replica.key
 deploy/dev
 !deploy/dev/docker-compose.yml
 set-env.sh
+**/log.txt

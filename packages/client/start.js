@@ -24,10 +24,13 @@ fastify.get('/:page', async function handler (request, reply) {
 })
 
 // Run the server!
-fastify.listen({ port: 3000 }, function (err, address) {
-  if (err) {
-    fastify.log.error(err)
-    process.exit(1)
+fastify.listen(
+  { port: 8080, host: '0.0.0.0' },
+  function (err, address) {
+    if (err) {
+      fastify.log.error(err)
+      process.exit(1)
+    }
+    fastify.log.info({msg: `up at: ${address}`})
   }
-  fastify.log.info({msg: `up at: ${address}`})
-})
+)

@@ -68,7 +68,7 @@
         <tr id='row'>
           <td id='rank' class='font-bold'></td>
           <td id='name' class='font-bold'></td>
-          <td id='score' class='italic'></td>
+          <td id='score' class='font-bold'></td>
           <template id='problem-score-template'>
             <td>
               <span id='status'></span>
@@ -114,13 +114,13 @@
   time constraint per test <span id='time-constraint'></span> ms<br>
   memory constraint per test <span id='memory-constraint'></span> MB<br>
 
-  <p id='context'></p>
+  <div id='context'></div>
 
   <h2>input</h2>
-  <p id='inputFormat'></p>
+  <div id='inputFormat'></div>
 
   <h2>output</h2>
-  <p id='outputFormat'></p>
+  <div id='outputFormat'></div>
 
   <h2>submission</h2>
   <label for="lang">Language:</label>
@@ -176,14 +176,14 @@ const makeProblemElement = async (contestId, problemId) =>
     s
       .replaceAll("\\begin{center}", "<p style='text: center'>")
       .replaceAll("\\end{center}", "</p>")
-      .replaceAll("\\begin{enumerate}", "<ol>")
-      .replaceAll("\\item", "<li>")
-      .replaceAll("\\end{enumerate}", "</ol>")
-      .replaceAll("\\begin{itemize}", "<ul>")
-      .replaceAll("\\item", "<li>")
-      .replaceAll("\\end{itemize}", "</ul>")
+      .replaceAll(/\\begin{enumerate}[\r\n ]*/g, "<ul class='list-decimal list-inside'>")
+      .replaceAll(/\\end{enumerate}(?: *\n)?/g, "</ul>")
+      .replaceAll(/\\begin{itemize}[\r\n ]*/g, "<ul class='list-disc list-inside'>")
+      .replaceAll(/\\end{itemize}(?: *\n)?/g, "</ul>")
+      .replaceAll(/\\item(.*)\r?\n/g, "<li>$1</li>")
       .replaceAll(/\\t{(.*?)}/g, "<code>$1</code>")
       .replaceAll(/\\bf{(.*?)}/g, "<b>$1</b>")
+      .replaceAll(/\r?\n/g, "<br style='line-height: 0.7rem'>")
 
   const e = document.querySelector('#problem-box-template').content.cloneNode(true);
 
@@ -316,11 +316,12 @@ const setup = async _ => {
   let problems;
 
   // NOTE: if cannot get problems, the user is not registered. skip problems and submissions
+  // TODO: or is upcomming contest 
   try {
     ({ problems } = await betterFetch(`/v1/contests/${contest.id}/problems/`, {}, { failable: true }))
   } catch (e) {
     console.log(e);
-    console.log('user is not a participant. only ranklist will be available')
+    console.log('Cannot get problems. Only ranklist will be available')
 
     document.querySelector('#nav-submission').disabled = true;
     document.querySelector('#nav-announcement').disabled = true;
@@ -356,7 +357,13 @@ const setup = async _ => {
     })
 
   // submission box
-  const submissions = await betterFetch(`/v1/contests/${contest.id}/submissions`)
+  let submissions = [];
+  try {
+    submissions = await betterFetch(`/v1/contests/${contest.id}/submissions`, {}, {failable: trun});
+  } catch (e) {
+    console.log(e);
+    console.log('could not get submissions, either not logged in or not a participant to ongoing contest', e);
+  }
 
   let html = '';
   for (const { problemId, createdAt, status, score, testcases, id, log } of submissions) 
