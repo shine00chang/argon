@@ -2,7 +2,7 @@
 
 <div class='flex w-full'>
 <div class='shadow w-1/4 p-4 h-max space-y-2'>
-  <button id='nav-problem-home' class='contest-name font-bold'></button><br>
+  <button id='nav-home' class='contest-name font-bold'></button><br>
   <button id='nav-ranklist'>Ranklist</button><br>
   <button id='nav-submission'>Submissions</button><br>
   <hr>
@@ -199,9 +199,9 @@ const makeProblemElement = async (contestId, problemId) =>
   {
     console.log('submit');
 
-    const editorE = document.querySelector(`#problem-box-${problemId} #editor`);
+    const editorE = document.querySelector(`#problem-${problemId}-box #editor`);
     const editor = ace.edit(editorE);
-    const lang = document.querySelector(`#problem-box-${problemId} #lang`);
+    const lang = document.querySelector(`#problem-${problemId}-box #lang`);
 
     const body = { 
       language: lang.value,
@@ -235,27 +235,33 @@ const makeProblemElement = async (contestId, problemId) =>
   }
 
   // add
-  e.querySelector('#problem-box').id += `-${problemId}`;
+  e.querySelector('#problem-box').id = `problem-${problemId}-box`;
   document.getElementById('box').appendChild(e);
 }
 
-
-
-
-const clearBox = _ => {
-  // hide other boxes
+const changetab = tab => {
   for (const e of document.getElementById('box').children)
     if (!e.classList.contains('hidden'))
       e.classList.add('hidden')
+  
+  // if none such tab, go to home
+  if (document.getElementById(`${tab}-box`) == null)
+    tab = 'home'
 
-  return true;
+  document.getElementById(`${tab}-box`).classList.remove('hidden');
+  let params = new URLSearchParams(document.location.search);
+  var url = new URL(window.location.href);
+  url.searchParams.set('tab', tab);
+  window.history.pushState('','',url.toString())
 }
-
 
 
 
 const setup = async _ => {
   const params = new URLSearchParams(window.location.search);
+
+  // change tab
+  changetab(params.get('tab'));
 
   // NOTE: If cannot get contest, it doesn't exist yet. notify
   let contest;
@@ -337,8 +343,7 @@ const setup = async _ => {
     // make button
     const e = document.querySelector('#problem-button').content.cloneNode(true);
     e.querySelector('#name').innerText = problem.name;
-    e.querySelector('#button').onclick = _ => 
-      clearBox() && document.getElementById(`problem-box-${problem.id}`).classList.remove('hidden');
+    e.querySelector('#button').onclick = _ => changetab(`problem-${problem.id}`)
 
     // make box
     problemMakePromises.push(makeProblemElement(contest.id, problem.id))
@@ -347,9 +352,15 @@ const setup = async _ => {
     document.getElementById('problem-list').appendChild(e)
   }
 
+
+
   // Trigger mathjax when all problems are made
+  // Change tab
   Promise.all(problemMakePromises)
-    .then(trymathjax)
+    .then(_ => {
+      changetab(params.get('tab'));
+      return trymathjax();
+    })
     .then(res => {
       // Mathjax did not run. Typesetting was already triggered. Should not happen
       if (res == false)
@@ -429,21 +440,12 @@ const setup = async _ => {
 
 
 
-// problem home
-document.getElementById('nav-problem-home').onclick = _ => 
-  clearBox() && document.getElementById('home-box').classList.remove('hidden');
 
-// submission
-document.getElementById('nav-submission').onclick = _ => 
-  clearBox() && document.getElementById('submission-box').classList.remove('hidden');
+document.getElementById('nav-home').onclick = _ => changetab('home')
+document.getElementById('nav-ranklist').onclick = _ => changetab('ranklist')
+document.getElementById('nav-submission').onclick = _ => changetab('submission')
+document.getElementById('nav-announcement').onclick = _ => changetab('announcement')
 
-// ranklist 
-document.getElementById('nav-ranklist').onclick = _ => 
-  clearBox() && document.getElementById('ranklist-box').classList.remove('hidden');
-
-// announcements
-document.getElementById('nav-announcement').onclick = _ => 
-  clearBox() && document.getElementById('announcement-box').classList.remove('hidden');
 
 
 awaitNavBar(setup)
