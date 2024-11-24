@@ -33,7 +33,7 @@
   <div id='submission-box' class='hidden'>
     <h1>Submissions</h1>
 
-    <table class='table-fixed'>
+    <table class='table-fixed w-full'>
       <thead class='spacing-4'>
         <th>date</th>
         <th>user</th>
@@ -145,12 +145,12 @@
   <td id='score'></td>
 </tr>
 <tr id='details-row' class='hidden'>
-  <td>
+  <td colspan="5">
     testcases:
-    <div id='testcase-list' class='flex gap-2'>
+    <div id='testcase-list' class='flex gap-2 overflow-x-scroll no-scrollbar'>
       <template id='testcase-template'>
-        <div class='border-1 rounded-md p-2'>
-          <span id='status'></span> <br>
+        <div class='border-1 rounded-md p-2 w-24'>
+          <span id='status' class='font-bold'></span> <br>
           <span id='time'></span> ms <br>
           <span id='memory'></span> MB <br>
         </div>
@@ -359,7 +359,7 @@ const setup = async _ => {
   // submission box
   let submissions = [];
   try {
-    submissions = await betterFetch(`/v1/contests/${contest.id}/submissions`, {}, {failable: trun});
+    submissions = await betterFetch(`/v1/contests/${contest.id}/submissions`, {}, {failable: true});
   } catch (e) {
     console.log(e);
     console.log('could not get submissions, either not logged in or not a participant to ongoing contest', e);
