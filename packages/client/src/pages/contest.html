@@ -435,8 +435,15 @@ const setup = async _ => {
       if (testcases) {
         for (const { score, result } of testcases) {
           const r = b.querySelector('template').content.cloneNode(true);
-
+          
           r.querySelector('#status').innerText = result.status;
+          r.querySelector('#status').style.color = 
+            result.status == "AC" ? 'green' :
+            result.status == "WA" ? 'red' :
+            result.status == "TLE" ? 'yellow' :
+            result.status == "MLE" ? 'brown' :
+            result.status == "SE" ? 'blue' : 'black';
+          
           r.querySelector('#score').innerText = score ? score.toFixed(2) : 0;
           r.querySelector('#time').innerText = result.wallTime ?? '-' 
           r.querySelector('#memory').innerText = result.memory ?? '-'
