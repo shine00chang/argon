@@ -41,8 +41,45 @@
         <th>status</th>
         <th>score</th>
       </thead>
-      <tbody></tbody>
+      <tbody>
+        <!-- Submission row template -->
+        <template id='submission-template'>
+        <tr id='row'>
+          <td id='date'></td>
+          <td id='user'></td>
+          <td id='problem'></td>
+          <td id='status'></td>
+          <td id='score'></td>
+        </tr>
+        </template>
+      </tbody>
     </table>
+  </div>
+
+  <!-- submission detail box -->
+  <div id='submission-detail-box' class='hidden'>
+    <h1>Submission Details</h1>
+
+    <span class='italic'>id: <span id='id'></span></span> <br>
+    status: <span id='status' class='font-bold'></span> <br>
+    score: <span id='score' class='font-bold'></span> pts <br>
+    for <span id='problem' class='font-bold'></span> <br>
+    <div id='log' class='hidden'>
+      Judger Message: <br>
+      <pre></pre>
+    </div>
+    
+    <div id='testcase-list'></div>
+    <template>
+      <div class='flex flex-wrap w-full border-2 rounded-md py-2 my-2 divide-x-2 text-center'>
+        <div id='status' class='font-bold basis-10'></div> 
+        <div id='score' class='font-bold basis-14'></div> 
+        <div class='basis-16'><span id='time'></span> ms</div> 
+        <div class='basis-20'><span id='memory'></span> MB</div> 
+        <div id='message' class='px-2 text-left'></div> 
+      </div>
+    </template>
+
   </div>
 
   <!-- ranklist box -->
@@ -135,30 +172,7 @@
 </div>
 </template>
 
-<!-- Submission row template -->
-<template id='submission-template'>
-<tr id='row'>
-  <td id='date'></td>
-  <td id='user'></td>
-  <td id='problem'></td>
-  <td id='status'></td>
-  <td id='score'></td>
-</tr>
-<tr id='details-row' class='hidden'>
-  <td colspan="5">
-    testcases:
-    <div id='testcase-list' class='flex gap-2 overflow-x-scroll no-scrollbar'>
-      <template id='testcase-template'>
-        <div class='border-1 rounded-md p-2 w-24'>
-          <span id='status' class='font-bold'></span> <br>
-          <span id='time'></span> ms <br>
-          <span id='memory'></span> MB <br>
-        </div>
-      </template>
-    </div>
-  </td>
-</tr>
-</template>
+
 
 
 </div>
@@ -239,6 +253,18 @@ const makeProblemElement = async (contestId, problemId) =>
   document.getElementById('box').appendChild(e);
 }
 
+const changetabnopersist = tab => {
+  for (const e of document.getElementById('box').children)
+    if (!e.classList.contains('hidden'))
+      e.classList.add('hidden')
+  
+  // if none such tab, go to home
+  if (document.getElementById(`${tab}-box`) == null)
+    tab = 'home'
+
+  document.getElementById(`${tab}-box`).classList.remove('hidden');
+}
+
 const changetab = tab => {
   for (const e of document.getElementById('box').children)
     if (!e.classList.contains('hidden'))
@@ -303,13 +329,13 @@ const setup = async _ => {
 
       e.querySelector('#rank').innerText = rank;
       e.querySelector('#name').innerText = name;
-      e.querySelector('#score').innerText = score;
+      e.querySelector('#score').innerText = score.toFixed(2);
 
       // problem status
       for (const problem of problems) {
         const q = e.querySelector('template').content.cloneNode(true);
         q.querySelector('td').id = problem.id 
-        q.querySelector('#status').innerText = scores[problem.id] ?? '-';
+        q.querySelector('#status').innerText = scores[problem.id] !== undefined ? scores[problem.id].toFixed(2) : '-';
 
         e.querySelector('tr').appendChild(q);
       }
@@ -387,31 +413,40 @@ const setup = async _ => {
     e.querySelector('#user').innerText = g_user.name;
     e.querySelector('#problem').innerText = problemsMap[problemId].name;
     e.querySelector('#status').innerText = status;
-    e.querySelector('#score').innerText = score === undefined ? '...' : score;
+    e.querySelector('#score').innerText = score ? score.toFixed(2) : '-';
 
-    // details view
-    const d = t.querySelector('#details-row');
-    d.id += `-${id}`
-
-    if (testcases) {
-      for (const { result } of testcases) {
-        const p = t.querySelector('#testcase-template').content.cloneNode(true);
-
-        p.querySelector('#status').innerText = result.status;
-        p.querySelector('#time').innerText = result.wallTime ?? '...'
-        p.querySelector('#memory').innerText = result.memory ?? '...'
-
-        d.querySelector('#testcase-list').appendChild(p);
-      }
-    }
-    
     // onclick: toggle details
     e.onclick = _ => {
-      const d = document.getElementById(`details-row-${id}`);
-      if (d.classList.contains('hidden'))
-        d.classList.remove('hidden')
-      else 
-        d.classList.add('hidden')
+      const b = document.querySelector(`#submission-detail-box`);
+
+      // reset
+      b.querySelector('#testcase-list').innerHTML = '';
+      b.querySelector('#log').classList.add('hidden');
+
+      // set props
+      b.querySelector('#id').innerText = id;
+      b.querySelector('#problem').innerText = problemsMap[problemId].name;
+      b.querySelector('#status').innerText = status; 
+      b.querySelector('#score').innerText = score ? score.toFixed(2) : '-';
+      b.querySelector('#log pre').innerText = log ?? '';
+      b.querySelector('#log').classList.remove('hidden');
+
+      // testcase rows
+      if (testcases) {
+        for (const { score, result } of testcases) {
+          const r = b.querySelector('template').content.cloneNode(true);
+
+          r.querySelector('#status').innerText = result.status;
+          r.querySelector('#score').innerText = score ? score.toFixed(2) : 0;
+          r.querySelector('#time').innerText = result.wallTime ?? '-' 
+          r.querySelector('#memory').innerText = result.memory ?? '-'
+          r.querySelector('#message').innerText = result.message ?? '-'
+
+          b.querySelector('#testcase-list').appendChild(r);
+        }
+      }
+      // change tab
+      changetabnopersist('submission-detail');
     }
 
     document.querySelector('#submission-box tbody').appendChild(t)
