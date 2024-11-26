@@ -45,7 +45,8 @@ export async function uploadPolygon ({ domainId, replaceId, archive }: { domainI
   }
 
   // Extract context
-  const context = statement.legend + '\n\n' + statement.notes
+  const context = statement.legend;
+  const note = statement.notes
 
   // Create Problem
   const problem: Problem = {
@@ -53,6 +54,7 @@ export async function uploadPolygon ({ domainId, replaceId, archive }: { domainI
     domainId,
     name: statement.name,
     context,
+    note,
     inputFormat: statement.input,
     outputFormat: statement.output,
     samples: [],
@@ -85,7 +87,7 @@ export async function uploadPolygon ({ domainId, replaceId, archive }: { domainI
 
   // If ID exists, replace problem, else insert problem
   // The ID is set to replace ID if it exists. see above
-  await domainProblemCollection.updateOne({ id: problem.id }, problem, { upsert: true })
+  await domainProblemCollection.updateOne({ id: problem.id }, { $set: problem }, { upsert: true })
 
   // Compile checker
   const checkerSource = (await fs.readFile(path.join(work_path, 'check.cpp'))).toString()

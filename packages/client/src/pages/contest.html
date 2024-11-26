@@ -159,6 +159,9 @@
   <h2>output</h2>
   <div id='outputFormat'></div>
 
+  <h2>notes</h2>
+  <div id='note'></div>
+
   <h2>submission</h2>
   <label for="lang">Language:</label>
   <select name="lang" id="lang" value="C++17" class='input'>
@@ -183,7 +186,7 @@
 // hidden in the box
 const makeProblemElement = async (contestId, problemId) => 
 {
-  const { name, context, constraints, inputFormat, outputFormat } =
+  const { name, context, note, constraints, inputFormat, outputFormat } =
     await betterFetch(`/v1/contests/${contestId}/problems/${problemId}`);
 
   const format = s => 
@@ -207,6 +210,7 @@ const makeProblemElement = async (contestId, problemId) =>
   e.querySelector('#context').innerHTML = format(context);
   e.querySelector('#inputFormat').innerHTML = format(inputFormat);
   e.querySelector('#outputFormat').innerHTML = format(outputFormat);
+  e.querySelector('#note').innerHTML = format(note);
 
   // submission
   e.querySelector('#submit').onclick = async _ => 

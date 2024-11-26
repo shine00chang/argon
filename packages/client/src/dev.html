@@ -124,7 +124,7 @@
   const getContestId = _ => {let e = document.querySelector('input[name="contest-radio"]:checked'); return e ? e.value : undefined;};
 
   const betterFetch = (url, options) => 
-    fetch("http://localhost:8000" + url, options)
+    fetch("http://13.93.218.61:8000" + url, options)
       .then(async res => {
         if (res.status >= 200 && res.status < 300) {
           const contentType = res.headers.get("content-type");

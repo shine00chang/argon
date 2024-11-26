@@ -5,6 +5,7 @@ import { ConstraintsSchema } from './judger.types.js'
 export const NewProblemSchema = Type.Object({
   name: Type.String(),
   context: Type.String(),
+  note: Type.String(),
   inputFormat: Type.String(),
   outputFormat: Type.String(),
   constraints: ConstraintsSchema,
@@ -25,6 +26,7 @@ export type NewProblem = Static<typeof NewProblemSchema>
 export const ProblemSchema = Type.Object({
   name: Type.String(),
   context: Type.String(),
+  note: Type.String(),
   inputFormat: Type.String(),
   outputFormat: Type.String(),
   constraints: ConstraintsSchema,

@@ -54,7 +54,6 @@ export async function startUploadServer (): Promise<void> {
 
   await app.register(heartbeatRoutes, { prefix: '/heartbeat' })
   await app.register(polygonRoutes, { prefix: '/polygon' })
-  //await app.register(testcaseRoutes, { prefix: '/testcases' })
 
   try {
     const port: number = parseInt(process.env.UPLOAD_SERVER_PORT ?? '8001')
