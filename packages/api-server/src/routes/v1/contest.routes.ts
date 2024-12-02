@@ -643,8 +643,7 @@ export async function contestRoutes (routes: FastifyTypeBox): Promise<void> {
         [hasContestPrivilege(['test'])], // Contest tester
         [contestRunning, registeredForContest], // Participant
         [contestEnded] // Past
-      ]) as any // Users
-      ]
+      ]) as any]
     },
     async (request, reply) => {
       
@@ -655,6 +654,7 @@ export async function contestRoutes (routes: FastifyTypeBox): Promise<void> {
       const query = { contestId, userId: request.user.id }
       const submissions = await querySubmissions({ query })
       
+      console.log(submissions[0]);
       return await reply.status(200).send(submissions)
     })
 

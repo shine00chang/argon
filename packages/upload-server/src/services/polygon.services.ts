@@ -58,7 +58,9 @@ export async function uploadPolygon ({ domainId, replaceId, archive }: { domainI
     inputFormat: statement.input,
     outputFormat: statement.output,
     samples: [],
-    constraints
+    constraints,
+    partials: false,
+    testcases: []
   }
 
   // Extract Testcases
@@ -66,7 +68,6 @@ export async function uploadPolygon ({ domainId, replaceId, archive }: { domainI
   const file_names = await fs.readdir(path.join(work_path, 'tests'))
   const test_names = file_names.filter(file => file !== 'archive' && !file.endsWith('.a'))
   const test_n = test_names.length
-  problem.testcases = []
   console.log(test_names)
 
   // For each file, upload file and answer.
@@ -80,7 +81,6 @@ export async function uploadPolygon ({ domainId, replaceId, archive }: { domainI
     problem.testcases.push({
       input,
       output,
-      points: 100 / test_n
     })
   }
   console.log('problem: ', problem)

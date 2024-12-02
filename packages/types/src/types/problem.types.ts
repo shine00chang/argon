@@ -9,16 +9,15 @@ export const NewProblemSchema = Type.Object({
   inputFormat: Type.String(),
   outputFormat: Type.String(),
   constraints: ConstraintsSchema,
+  partials: Type.Boolean(),
   samples: Type.Array(
     Type.Object({ input: Type.String(), output: Type.String() })
   ),
-  testcases: Type.Optional(Type.Array(
+  testcases: Type.Array(
     Type.Object({
       input: Type.Object({ name: Type.String(), versionId: Type.String() }),
       output: Type.Object({ name: Type.String(), versionId: Type.String() }),
-      points: Type.Number()
     }))
-  )
 }, { additionalProperties: false })
 
 export type NewProblem = Static<typeof NewProblemSchema>
@@ -30,16 +29,15 @@ export const ProblemSchema = Type.Object({
   inputFormat: Type.String(),
   outputFormat: Type.String(),
   constraints: ConstraintsSchema,
+  partials: Type.Boolean(),
   samples: Type.Array(
     Type.Object({ input: Type.String(), output: Type.String() })
   ),
-  testcases: Type.Optional(Type.Array(
+  testcases: Type.Array(
     Type.Object({
       input: Type.Object({ name: Type.String(), versionId: Type.String() }),
       output: Type.Object({ name: Type.String(), versionId: Type.String() }),
-      points: Type.Number()
-    }))
-  ),
+    })),
   checker: Type.Optional(Type.Object({ name: Type.String(), versionId: Type.String() })),
   id: Type.String(),
   domainId: Type.String()

@@ -61,6 +61,7 @@
     <h1>Submission Details</h1>
 
     <span class='italic'>id: <span id='id'></span></span> <br>
+    <span id='date'></span><br>
     status: <span id='status' class='font-bold'></span> <br>
     score: <span id='score' class='font-bold'></span> pts <br>
     for <span id='problem' class='font-bold'></span> <br>
@@ -68,18 +69,16 @@
       Judger Message: <br>
       <pre></pre>
     </div>
-    
+    <div id='source' class='h-72 w-full mt-4'></div>
     <div id='testcase-list'></div>
     <template>
       <div class='flex flex-wrap w-full border-2 rounded-md py-2 my-2 divide-x-2 text-center'>
         <div id='status' class='font-bold basis-10'></div> 
-        <div id='score' class='font-bold basis-14'></div> 
-        <div class='basis-16'><span id='time'></span> ms</div> 
-        <div class='basis-20'><span id='memory'></span> MB</div> 
+        <div class='basis-20'><span id='time'></span> ms</div> 
+        <div class='basis-20'><span id='memory'></span></div> 
         <div id='message' class='px-2 text-left'></div> 
       </div>
     </template>
-
   </div>
 
   <!-- ranklist box -->
@@ -168,7 +167,7 @@
      <option value="C++">C++</option>
      <option value="Python">Python</option>
   </select> <br>
-  <div id='editor' class='textarea w-full h-72 mt-4'></div>
+  <div id='editor' class='w-full h-72 mt-4'></div>
     
   <button id='submit' class='btn'>submit</button>
 
@@ -206,7 +205,7 @@ const makeProblemElement = async (contestId, problemId) =>
 
   e.querySelector('#name').innerText = name;
   e.querySelector('#time-constraint').innerText = constraints.time;
-  e.querySelector('#memory-constraint').innerText = constraints.memory;
+  e.querySelector('#memory-constraint').innerText = constraints.memory / 1000;
   e.querySelector('#context').innerHTML = format(context);
   e.querySelector('#inputFormat').innerHTML = format(inputFormat);
   e.querySelector('#outputFormat').innerHTML = format(outputFormat);
@@ -218,12 +217,12 @@ const makeProblemElement = async (contestId, problemId) =>
     console.log('submit');
 
     const editorE = document.querySelector(`#problem-${problemId}-box #editor`);
-    const editor = ace.edit(editorE);
+    const source = ace.edit(editorE).getValue();
     const lang = document.querySelector(`#problem-${problemId}-box #lang`);
 
     const body = { 
       language: lang.value,
-      source: editor.getValue(), 
+      source
     };
 
     if (!body.language) return alert('no language');
@@ -407,7 +406,7 @@ const setup = async _ => {
   }
 
   let html = '';
-  for (const { problemId, createdAt, status, score, testcases, id, log } of submissions) 
+  for (const { problemId, createdAt, status, score, testcases, id, log, source, language } of submissions) 
   {
     const t = document.querySelector('#submission-template').content.cloneNode(true);
     const e = t.querySelector('#row');
@@ -417,7 +416,7 @@ const setup = async _ => {
     e.querySelector('#user').innerText = g_user.name;
     e.querySelector('#problem').innerText = problemsMap[problemId].name;
     e.querySelector('#status').innerText = status;
-    e.querySelector('#score').innerText = score ? score.toFixed(2) : '-';
+    e.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
 
     // onclick: toggle details
     e.onclick = _ => {
@@ -429,28 +428,41 @@ const setup = async _ => {
 
       // set props
       b.querySelector('#id').innerText = id;
+      b.querySelector('#date').innerText = (new Date(createdAt)).toLocaleString();
       b.querySelector('#problem').innerText = problemsMap[problemId].name;
       b.querySelector('#status').innerText = status; 
-      b.querySelector('#score').innerText = score ? score.toFixed(2) : '-';
+      b.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
       b.querySelector('#log pre').innerText = log ?? '';
       b.querySelector('#log').classList.remove('hidden');
 
+      // source
+      const editor = ace.edit(b.querySelector('#source'), {
+        mode: `ace/mode/${language == 'C++' ? 'c_cpp' : 'python'}`,
+        selectionStyle: "text"
+      })
+      editor.setValue(source);
+      editor.setReadOnly(true);
+
+
       // testcase rows
       if (testcases) {
-        for (const { score, result } of testcases) {
+        for (let { score, result } of testcases) {
           const r = b.querySelector('template').content.cloneNode(true);
+
+          if (result == undefined)
+            result = {}
           
-          r.querySelector('#status').innerText = result.status;
+          r.querySelector('#status').innerText = result.status ?? '-';
           r.querySelector('#status').style.color = 
             result.status == "AC" ? 'green' :
             result.status == "WA" ? 'red' :
-            result.status == "TLE" ? 'yellow' :
-            result.status == "MLE" ? 'brown' :
+            result.status == "TLE" ? 'red' :
+            result.status == "MLE" ? 'red' :
             result.status == "SE" ? 'blue' : 'black';
           
-          r.querySelector('#score').innerText = score ? score.toFixed(2) : 0;
-          r.querySelector('#time').innerText = result.wallTime ?? '-' 
-          r.querySelector('#memory').innerText = result.memory ?? '-'
+          r.querySelector('#time').innerText = result.wallTime ?? '-';
+          r.querySelector('#memory').innerText = 
+            result.memory ?  result.memory > 1000 ? `${Math.floor(result.memory/1000)} MB` : `${result.memory} KB` : '-'
           r.querySelector('#message').innerText = result.message ?? '-'
 
           b.querySelector('#testcase-list').appendChild(r);

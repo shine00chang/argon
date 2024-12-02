@@ -32,28 +32,24 @@ export async function gradeSubmission ({ task, boxId }: { task: GradingTask, box
   let command = config.executeCommand
   command = command.replaceAll('{binary_path}', config.binaryFile)
 
-  console.log('cmd: ', command);
-  const sandboxResult = await runInSandbox(
-    {
-      task: {
-        command,
-        constraints: task.constraints,
-        inputPath: 'in.txt',
-        outputPath: 'out.txt'
-      },
-      boxId
-    })
+  const sandboxResult = await runInSandbox({
+    task: {
+      command,
+      constraints: task.constraints,
+      inputPath: 'in.txt',
+      outputPath: 'out.txt'
+    },
+    boxId
+  })
 
-  //return  new Promise((resolve, reject) => resolve({ message: '', status: GradingStatus.Accepted, memory: 1, time: 1, wallTime: 1}));
-  
   if (sandboxResult.status !== SandboxStatus.Succeeded) 
     return sandboxResult
 
   const { time, wallTime, memory } = sandboxResult
   try {
+    // Run checker
     const command = `./checker in.txt ans.txt out.txt`;
-    const result = await runInSandbox(
-    {
+    const result = await runInSandbox({
       task: {
         command,
         constraints: {
@@ -66,24 +62,26 @@ export async function gradeSubmission ({ task, boxId }: { task: GradingTask, box
       boxId
     })
 
-    if (result.status !== SandboxStatus.Succeeded) 
+    // Get message 
+    const message = (await fs.readFile(verdictPath)).toString()
+    const pass = message.startsWith('ok');
+
+    console.log('message: ', message);
+
+    // If system error
+    if (result.status !== SandboxStatus.Succeeded &&
+        result.status !== SandboxStatus.RuntimeError)
       throw result
 
-    const verdict = (await fs.readFile(verdictPath)).toString()
-    const passed = verdict.startsWith('ok');
-
-    console.log('checker: ', command);
-    console.log('verdict: ', passed);
     return {
-      status: passed ? GradingStatus.Accepted : GradingStatus.WrongAnswer,
+      status: pass ? GradingStatus.Accepted : GradingStatus.WrongAnswer,
       time,
       wallTime,
       memory,
-      message: passed ? 'Submission accepted' : 'Wrong answer'
+      message 
     }
   } catch (err) {
-
-    console.log('checker failed', err)
+    console.log('checker failed with: ', err)
     return {
       status: GradingStatus.WrongAnswer,
       time,

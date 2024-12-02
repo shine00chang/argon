@@ -6,75 +6,88 @@ import path from 'path'
 export async function handleCompileResult (compileResult: CompilingResult, submissionId: string): Promise<void> {
   const submission = await fetchSubmission({ submissionId })
 
-  if (submission.status === SubmissionStatus.Compiling) {
-    if (compileResult.status === CompilingStatus.Succeeded) {
-      const { problemId, domainId, contestId } = submission
-      let problem: Problem = contestId == null ?
-        await fetchDomainProblem({ problemId, domainId }) : 
-        await fetchContestProblem({ problemId, contestId })
-
-      if (problem.testcases == null) {
-        await completeGrading(submissionId, 'Problem does not have testcases');
-        return
-      }
-
-      if (problem.checker === null || problem.checker === undefined) {
-        await completeGrading(submissionId, 'Problem Checker does not exist or is not compiled');
-        return
-      }
-
-      const submissionTestcases: Array<{ points: number, input: { name: string, versionId: string }, output: { name: string, versionId: string } }> = []
-
-      problem.testcases.forEach((testcase, index) => {
-        const task: GradingTask = {
-          constraints: problem.constraints,
-          type: JudgerTaskType.Grading,
-          submissionId,
-          problemId: problem.id,
-          testcase: {
-            input: {
-              objectName: path.join(problem.id, testcase.input.name),
-              versionId: testcase.input.versionId
-            },
-            output: {
-              objectName: path.join(problem.id, testcase.output.name),
-              versionId: testcase.output.versionId
-            }
-          },
-          checker: { 
-            objectName: problem.checker!.name,
-            versionId: problem.checker!.versionId 
-          },
-          testcaseIndex: index,
-          language: submission.language
-        }
-        rabbitMQ.publish(judgerExchange, judgerTasksKey, Buffer.from(JSON.stringify(task)))
-        submissionTestcases.push({ points: testcase.points, input: testcase.input, output: testcase.output })
-      })
-
-      await submissionCollection.updateOne({ id: submissionId }, {
-        $set: {
-          status: SubmissionStatus.Grading,
-          gradedCases: 0,
-          testcases: submissionTestcases
-        }
-      })
-    } else {
-      await submissionCollection.updateOne({ id: submissionId }, {
-        $set: {
-          status: SubmissionStatus.CompileFailed,
-          log: compileResult.log
-        }
-      })
-    }
+  // Not a compiling submission?
+  if (submission.status !== SubmissionStatus.Compiling) {
+    console.error('handleCompletResult() got submission that is not compiling. skip.');
+    return;
   }
+
+  // Compilation failed
+  if (compileResult.status !== CompilingStatus.Succeeded) {
+    await submissionCollection.updateOne({ id: submissionId }, {
+      $set: {
+        status: SubmissionStatus.CompileFailed,
+        log: compileResult.log
+      }
+    });
+    return;
+  }
+
+
+  const { problemId, domainId, contestId } = submission
+
+  let problem: Problem = contestId == null ?
+    await fetchDomainProblem({ problemId, domainId }) : 
+    await fetchContestProblem({ problemId, contestId })
+
+  if (problem.testcases == null) {
+    await completeGrading(submissionId, 'Problem does not have testcases');
+    return
+  }
+
+  if (problem.checker === null || problem.checker === undefined) {
+    await completeGrading(submissionId, 'Problem Checker does not exist or is not compiled');
+    return
+  }
+
+  const submissionTestcases: Array<{}> = []
+
+  problem.testcases.forEach((testcase, index) => {
+    const task: GradingTask = {
+      constraints: problem.constraints,
+      type: JudgerTaskType.Grading,
+      submissionId,
+      problemId: problem.id,
+      testcase: {
+        input: {
+          objectName: path.join(problem.id, testcase.input.name),
+          versionId: testcase.input.versionId
+        },
+        output: {
+          objectName: path.join(problem.id, testcase.output.name),
+          versionId: testcase.output.versionId
+        }
+      },
+      checker: { 
+        objectName: problem.checker!.name,
+        versionId: problem.checker!.versionId 
+      },
+      testcaseIndex: index,
+      language: submission.language
+    }
+    rabbitMQ.publish(judgerExchange, judgerTasksKey, Buffer.from(JSON.stringify(task)))
+    submissionTestcases.push({})
+  })
+
+  await submissionCollection.updateOne({ id: submissionId }, {
+    $set: {
+      status: SubmissionStatus.Grading,
+      gradedCases: 0,
+      testcases: submissionTestcases
+    }
+  })
 }
 
 export async function completeGrading (submissionId: string, log?: string): Promise<void> {
   const submission = await fetchSubmission({ submissionId })
+  const { problemId, domainId, contestId, teamId, status, createdAt } = submission;
+  const { partials } = contestId == null ?
+      await fetchDomainProblem({ problemId, domainId }) : 
+      await fetchContestProblem({ problemId, contestId })
 
-  if (submission.status !== SubmissionStatus.Compiling &&
-      submission.status !== SubmissionStatus.Grading) {
+  // Unexpected status
+  if (status !== SubmissionStatus.Compiling &&
+      status !== SubmissionStatus.Grading) {
     console.error('completeGrading recieved unexpected status: ', submission.status);
     return;
   }
@@ -85,17 +98,21 @@ export async function completeGrading (submissionId: string, log?: string): Prom
     await submissionCollection.updateOne({ id: submissionId }, { $set: { status: SubmissionStatus.Terminated, log } })
     return;
   } 
+  const testcases = submission.testcases;
 
-  // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
-  const score = submission.testcases.reduce((accumulator: number, testcase) => accumulator + (testcase.score ?? 0), 0)
+  // Calculate score
+  // eslint-disable-next-line @typescript-eslint/restrict-plus-operands 
+  const passes = testcases.reduce((t, testcase) => t + (testcase.result!).status == GradingStatus.Accepted ? 1 : 0, 1);
+  const score = partials ? 
+    passes / testcases.length * 100 :
+    (passes == testcases.length ? 100 : 0);
+    
   await submissionCollection.updateOne({ id: submissionId }, {
     $set: {
       score,
       status: SubmissionStatus.Graded
     },
-    $unset: {
-      gradedCases: ''
-    }
+    $unset: { gradedCases: '' }
   })
 
   // Skip score update if testing submission
@@ -124,16 +141,13 @@ export async function handleGradingResult (gradingResult: GradingResult, submiss
     if (submission.testcases[testcaseIndex] == null) {
       throw new NotFoundError('No testcase found at the given index')
     }
-    const score = gradingResult.status === GradingStatus.Accepted ? submission.testcases[testcaseIndex].points : 0
     submission.testcases[testcaseIndex].result = gradingResult
     await submissionCollection.updateOne({ id: submissionId }, {
       $set: {
         [`testcases.${testcaseIndex}.result`]: gradingResult,
-        [`testcases.${testcaseIndex}.score`]: score
       },
       $inc: {
         gradedCases: 1,
-        score
       }
     })
 

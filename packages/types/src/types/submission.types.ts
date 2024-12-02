@@ -39,8 +39,6 @@ const GradingSubmissionSchema = Type.Intersect([BaseSubmissionSchema, Type.Objec
   status: Type.Literal(SubmissionStatus.Grading),
   gradedCases: Type.Number(),
   testcases: Type.Array(Type.Object({
-    points: Type.Number(),
-    score: Type.Optional(Type.Number()),
     result: Type.Optional(GradingResultSchema)
   }))
 })])
@@ -59,8 +57,6 @@ const GradedSubmissionSchema = Type.Intersect([BaseSubmissionSchema, Type.Object
   status: Type.Literal(SubmissionStatus.Graded),
   score: Type.Number(),
   testcases: Type.Array(Type.Object({
-    points: Type.Number(),
-    score: Type.Number(),
     result: GradingResultSchema
   }))
 })])
