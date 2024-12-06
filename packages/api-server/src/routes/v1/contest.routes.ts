@@ -147,7 +147,7 @@ async function contestProblemRoutes (problemRoutes: FastifyTypeBox): Promise<voi
     },
     async (request, reply) => {
       const { contestId, problemId } = request.params
-      const result = await syncProblemToContest({ contestId, problemId })
+      let result = await syncProblemToContest({ contestId, problemId })
       return await reply.status(200).send(result)
     }
   )

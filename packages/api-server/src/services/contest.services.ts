@@ -141,21 +141,21 @@ export async function syncProblemToContest ({ contestId, problemId }: { contestI
   try {
     await session.withTransaction(async () => {
       const contest = await contestCollection.findOne({ id: contestId }, { session })
-      if (contest == null) {
-        throw new NotFoundError('Contest not found')
-      }
+      if (contest == null) throw new NotFoundError('Contest not found')
 
       const problem = await domainProblemCollection.findOne({ id: problemId, domainId: contest.domainId }, { session })
-      if (problem == null) {
-        throw new NotFoundError('Problem not found')
-      }
-      if (problem.testcases == null) {
-        throw new MethodNotAllowedError('Testcases must be uploaded before a problem can be added to contests')
-      }
+      if (problem == null) throw new NotFoundError('Problem not found')
 
-      const contestProblem: ContestProblem = { ...problem, obsolete: false, contestId }
-      const { modifiedCount: modifiedProblem } = await contestProblemCollection.replaceOne({ id: problemId, contestId }, contestProblem, { upsert: true })
+      const contestProblem: any = { ...problem, obsolete: false, contestId }
+      delete contestProblem._id;
+      const { modifiedCount: modifiedProblem } = await contestProblemCollection.updateOne({ id: problemId }, { $set: { ...contestProblem } }, { upsert: true })
       modifiedCount += Math.floor(modifiedProblem)
+
+
+      await contestProblemListCollection.updateOne(
+        { id: contestId },
+        { $pull: { problems: { id: contestProblem.id } } }
+      )
 
       const { modifiedCount: modifiedList } = await contestProblemListCollection.updateOne(
         { id: contestId },

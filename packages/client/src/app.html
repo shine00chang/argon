@@ -27,10 +27,9 @@ window.MathJax = {
 
     <!-- Library -->
     <script>
-const src = `http://13.93.218.61:8000`;
-//const src = `http://localhost:8000`;
+const api = `http://${window.location.hostname}:8000`;
 const betterFetch = (url, options, { failable } = {}) => 
-  fetch(src + url, {
+  fetch(api + url, {
     ...options,
     credentials: 'include'
   })

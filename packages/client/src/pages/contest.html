@@ -158,6 +158,14 @@
   <h2>output</h2>
   <div id='outputFormat'></div>
 
+  <h2 id='sampleTitle'>samples</h2>
+  <div id='samples' class='space-y-2'>
+    <template>
+      <pre id='input' class='border-2 bg-gray-50 p-2 rounded-md text-xs'></pre>
+      <pre id='output' class='border-2 bg-gray-50 p-2 rounded-md text-xs'></pre>
+    </template>
+  </div>
+
   <h2>notes</h2>
   <div id='note'></div>
 
@@ -185,7 +193,7 @@
 // hidden in the box
 const makeProblemElement = async (contestId, problemId) => 
 {
-  const { name, context, note, constraints, inputFormat, outputFormat } =
+  const { name, context, note, constraints, inputFormat, outputFormat, samples } =
     await betterFetch(`/v1/contests/${contestId}/problems/${problemId}`);
 
   const format = s => 
@@ -210,6 +218,16 @@ const makeProblemElement = async (contestId, problemId) =>
   e.querySelector('#inputFormat').innerHTML = format(inputFormat);
   e.querySelector('#outputFormat').innerHTML = format(outputFormat);
   e.querySelector('#note').innerHTML = format(note);
+
+  // samples
+  if (samples.length == 0)
+    e.querySelector('#sampleTitle').classList.add('hidden');
+  for (const sample of samples) {
+    const s = e.querySelector('#samples template').content.cloneNode(true);
+    s.querySelector('#input').innerText = sample.input;
+    s.querySelector('#output').innerText = sample.output;
+    e.querySelector('#samples').appendChild(s);
+  }
 
   // submission
   e.querySelector('#submit').onclick = async _ => 
@@ -350,8 +368,7 @@ const setup = async _ => {
   // problem boxes
   let problems;
 
-  // NOTE: if cannot get problems, the user is not registered. skip problems and submissions
-  // TODO: or is upcomming contest 
+  // NOTE: if cannot get problems, the contest is upcomming
   try {
     ({ problems } = await betterFetch(`/v1/contests/${contest.id}/problems/`, {}, { failable: true }))
   } catch (e) {

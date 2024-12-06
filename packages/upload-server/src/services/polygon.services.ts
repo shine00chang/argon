@@ -46,7 +46,9 @@ export async function uploadPolygon ({ domainId, replaceId, archive }: { domainI
 
   // Extract context
   const context = statement.legend;
-  const note = statement.notes
+  const note = statement.notes;
+  const samples = statement.sampleTests
+    .map(({ input, output }) => { return { input, output } });
 
   // Create Problem
   const problem: Problem = {
@@ -57,7 +59,7 @@ export async function uploadPolygon ({ domainId, replaceId, archive }: { domainI
     note,
     inputFormat: statement.input,
     outputFormat: statement.output,
-    samples: [],
+    samples,
     constraints,
     partials: false,
     testcases: []
@@ -67,7 +69,6 @@ export async function uploadPolygon ({ domainId, replaceId, archive }: { domainI
   // Get testcase names
   const file_names = await fs.readdir(path.join(work_path, 'tests'))
   const test_names = file_names.filter(file => file !== 'archive' && !file.endsWith('.a'))
-  const test_n = test_names.length
   console.log(test_names)
 
   // For each file, upload file and answer.
