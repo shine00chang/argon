@@ -15,11 +15,21 @@ fastify.register(fastifyStatic, {
   prefix: '/static'
 })
 
+fastify.register(fastifyStatic, {
+  root: path.join(__dirname, 'public'),
+  prefix: '/public',
+  decorateReply: false
+})
+
 fastify.get('/:page', async function handler (request, reply) {
   const { page } = request.params
-  const fd = await fs.open(path.join(__dirname, `build/${page}.html`))
-  const stream = fd.createReadStream()
-  reply.type('text/html').send(stream)
+  try {
+    const fd = await fs.open(path.join(__dirname, `build/${page}.html`))
+    const stream = fd.createReadStream()
+    reply.type('text/html').send(stream)
+  } catch (e) {
+    reply.redirect('/contests', 303)
+  }
   return reply
 })
 

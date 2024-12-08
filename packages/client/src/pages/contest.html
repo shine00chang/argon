@@ -3,8 +3,8 @@
 <div class='flex w-full'>
 <div class='shadow w-1/4 p-4 h-max space-y-2'>
   <button id='nav-home' class='contest-name font-bold'></button><br>
-  <button id='nav-ranklist'>Ranklist</button><br>
-  <button id='nav-submission'>Submissions</button><br>
+  <button id='nav-ranklist' disabled>Ranklist</button><br>
+  <button id='nav-submission' disabled>Submissions</button><br>
   <hr>
   
   <!-- populated dynamically -->
@@ -18,7 +18,7 @@
   </div>
 
   <hr>
-  <button id='nav-announcement'>Announcements</button>
+  <button id='nav-announcement' disabled>Announcements</button>
 </div>
 
 <div id='box' class='pl-6 pb-10 w-3/4'>
@@ -159,9 +159,11 @@
   <div id='outputFormat'></div>
 
   <h2 id='sampleTitle'>samples</h2>
-  <div id='samples' class='space-y-2'>
+  <div id='samples'>
     <template>
+      input<br>
       <pre id='input' class='border-2 bg-gray-50 p-2 rounded-md text-xs'></pre>
+      output<br>
       <pre id='output' class='border-2 bg-gray-50 p-2 rounded-md text-xs'></pre>
     </template>
   </div>
@@ -169,15 +171,14 @@
   <h2>notes</h2>
   <div id='note'></div>
 
-  <h2>submission</h2>
-  <label for="lang">Language:</label>
-  <select name="lang" id="lang" value="C++17" class='input'>
+  <h2 class='submission'>submission</h2>
+  <label class='submission' for="lang">Language:</label>
+  <select name="lang" id="lang" value="C++17" class='submission input'>
      <option value="C++">C++</option>
      <option value="Python">Python</option>
   </select> <br>
-  <div id='editor' class='w-full h-72 mt-4'></div>
-    
-  <button id='submit' class='btn'>submit</button>
+  <div id='editor' class='submission w-full h-72 mt-4'></div>
+  <button id='submit' class='submission btn'>submit</button>
 
 </div>
 </template>
@@ -229,10 +230,14 @@ const makeProblemElement = async (contestId, problemId) =>
     e.querySelector('#samples').appendChild(s);
   }
 
+  // if not logged in, no submit
+  if (g_user === undefined)
+    e.querySelectorAll('.submission').forEach(e => e.classList.add('hidden'))
+
   // submission
   e.querySelector('#submit').onclick = async _ => 
   {
-    console.log('submit');
+    console.log('submiting');
 
     const editorE = document.querySelector(`#problem-${problemId}-box #editor`);
     const source = ace.edit(editorE).getValue();
@@ -316,25 +321,30 @@ const setup = async _ => {
     contest = await betterFetch(`/v1/contests/${params.get('id')}`, {}, { failable: true });
   } catch (e) {
     console.log(e);
-    console.log('contest does not exist');
+    console.log('could not get contest, contest does not exist. ending.');
     document.querySelector('#not-exist-notice').classList.remove('hidden');
 
-    document.querySelector('#nav-ranklist').disabled = true;
-    document.querySelector('#nav-submission').disabled = true;
-    document.querySelector('#nav-announcement').disabled = true;
     return;
   }
 
-  // home-box
+  // === home-box ===
   document.querySelectorAll('.contest-name').forEach(e => e.innerText = contest.name)
   document.querySelectorAll('.contest-desc').forEach(e => e.innerText = contest.description)
 
-  // NOTE: This is first since this is visible even if you are not a participant.
 
-  // ranklist box
+  // === ranklist box ===
+  let ranklist, ranklistProblemList;
+  try {
+    ({ranklist, problems: ranklistProblemList} = await betterFetch(`/v1/contests/${contest.id}/ranklist`));
+  } catch (e) {
+    console.log(e);
+    console.log('could not get ranklist.');
+  }
+
+  if (Array.isArray(ranklist)) 
   {
-    const { ranklist, problems } = await betterFetch(`/v1/contests/${contest.id}/ranklist`);
-
+    const problems = ranklistProblemList;
+    document.querySelector('#nav-ranklist').disabled = false;
     // ranklist table header
     for (const problem of problems) {
       const e = document.querySelector('#ranklist-box thead template').content.cloneNode(true);
@@ -365,105 +375,103 @@ const setup = async _ => {
     }
   }
 
-  // problem boxes
-  let problems;
-
-  // NOTE: if cannot get problems, the contest is upcomming
+  // === problem boxes ===
+  let problems
+  let problemsMap = {};
   try {
     ({ problems } = await betterFetch(`/v1/contests/${contest.id}/problems/`, {}, { failable: true }))
   } catch (e) {
+    // NOTE: if cannot get problems, the contest is probably upcomming
     console.log(e);
-    console.log('Cannot get problems. Only ranklist will be available')
-
-    document.querySelector('#nav-submission').disabled = true;
-    document.querySelector('#nav-announcement').disabled = true;
-    return;
+    console.log('could not get problems.')
   }
 
-  const problemsMap = {};
-  const problemMakePromises = [];
-  for (const problem of problems) 
+  if (Array.isArray(problems)) 
   {
-    problemsMap[problem.id] = problem;
+    const problemMakePromises = [];
+    for (const problem of problems) 
+    {
+      problemsMap[problem.id] = problem;
 
-    // make button
-    const e = document.querySelector('#problem-button').content.cloneNode(true);
-    e.querySelector('#name').innerText = problem.name;
-    e.querySelector('#button').onclick = _ => changetab(`problem-${problem.id}`)
+      // make button
+      const e = document.querySelector('#problem-button').content.cloneNode(true);
+      e.querySelector('#name').innerText = problem.name;
+      e.querySelector('#button').onclick = _ => changetab(`problem-${problem.id}`)
 
-    // make box
-    problemMakePromises.push(makeProblemElement(contest.id, problem.id))
-       
-    // append
-    document.getElementById('problem-list').appendChild(e)
+      // make box
+      problemMakePromises.push(makeProblemElement(contest.id, problem.id))
+         
+      // append
+      document.getElementById('problem-list').appendChild(e)
+    }
+
+    // Trigger mathjax when all problems are made
+    // Change tab
+    Promise.all(problemMakePromises)
+      .then(_ => {
+        changetab(params.get('tab'));
+        return trymathjax();
+      })
+      .then(res => {
+        // Mathjax did not run. Typesetting was already triggered. Should not happen
+        if (res == false)
+          console.error('Mathjax did not run. Typesetting was already triggered')
+      })
   }
 
-
-
-  // Trigger mathjax when all problems are made
-  // Change tab
-  Promise.all(problemMakePromises)
-    .then(_ => {
-      changetab(params.get('tab'));
-      return trymathjax();
-    })
-    .then(res => {
-      // Mathjax did not run. Typesetting was already triggered. Should not happen
-      if (res == false)
-        console.error('Mathjax did not run. Typesetting was already triggered')
-    })
-
-  // submission box
-  let submissions = [];
+  // === submission box ===
+  let submissions;
   try {
     submissions = await betterFetch(`/v1/contests/${contest.id}/submissions`, {}, {failable: true});
   } catch (e) {
     console.log(e);
-    console.log('could not get submissions, either not logged in or not a participant to ongoing contest', e);
+    console.log('could not get submissions, either not logged in or not a participant to ongoing contest');
   }
 
-  let html = '';
-  for (const { problemId, createdAt, status, score, testcases, id, log, source, language } of submissions) 
+  if (Array.isArray(submissions)) 
   {
-    const t = document.querySelector('#submission-template').content.cloneNode(true);
-    const e = t.querySelector('#row');
+    document.querySelector('#nav-submission').disabled = false;
+    let html = '';
+    for (const { problemId, createdAt, status, score, testcases, id, log, source, language } of submissions) 
+    {
+      const t = document.querySelector('#submission-template').content.cloneNode(true);
+      const e = t.querySelector('#row');
 
-    // row
-    e.querySelector('#date').innerText = (new Date(createdAt)).toLocaleString();
-    e.querySelector('#user').innerText = g_user.name;
-    e.querySelector('#problem').innerText = problemsMap[problemId].name;
-    e.querySelector('#status').innerText = status;
-    e.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
+      // row
+      e.querySelector('#date').innerText = (new Date(createdAt)).toLocaleString();
+      e.querySelector('#user').innerText = g_user.name;
+      e.querySelector('#problem').innerText = problemsMap[problemId].name;
+      e.querySelector('#status').innerText = status;
+      e.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
 
-    // onclick: toggle details
-    e.onclick = _ => {
-      const b = document.querySelector(`#submission-detail-box`);
+      // onclick: toggle details
+      e.onclick = _ => {
+        const b = document.querySelector(`#submission-detail-box`);
 
-      // reset
-      b.querySelector('#testcase-list').innerHTML = '';
-      b.querySelector('#log').classList.add('hidden');
+        // reset
+        b.querySelector('#testcase-list').innerHTML = '';
+        b.querySelector('#log').classList.add('hidden');
 
-      // set props
-      b.querySelector('#id').innerText = id;
-      b.querySelector('#date').innerText = (new Date(createdAt)).toLocaleString();
-      b.querySelector('#problem').innerText = problemsMap[problemId].name;
-      b.querySelector('#status').innerText = status; 
-      b.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
-      b.querySelector('#log pre').innerText = log ?? '';
-      b.querySelector('#log').classList.remove('hidden');
+        // set props
+        b.querySelector('#id').innerText = id;
+        b.querySelector('#date').innerText = (new Date(createdAt)).toLocaleString();
+        b.querySelector('#problem').innerText = problemsMap[problemId].name;
+        b.querySelector('#status').innerText = status; 
+        b.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
+        b.querySelector('#log pre').innerText = log ?? '';
+        b.querySelector('#log').classList.remove('hidden');
 
-      // source
-      const editor = ace.edit(b.querySelector('#source'), {
-        mode: `ace/mode/${language == 'C++' ? 'c_cpp' : 'python'}`,
-        selectionStyle: "text"
-      })
-      editor.setValue(source);
-      editor.setReadOnly(true);
+        // source
+        const editor = ace.edit(b.querySelector('#source'), {
+          mode: `ace/mode/${language == 'C++' ? 'c_cpp' : 'python'}`,
+          selectionStyle: "text"
+        })
+        editor.setValue(source);
+        editor.setReadOnly(true);
 
 
-      // testcase rows
-      if (testcases) {
-        for (let { score, result } of testcases) {
+        // testcase rows
+        for (let { score, result } of testcases ?? []) {
           const r = b.querySelector('template').content.cloneNode(true);
 
           if (result == undefined)
@@ -484,17 +492,17 @@ const setup = async _ => {
 
           b.querySelector('#testcase-list').appendChild(r);
         }
+
+        // change tab
+        changetabnopersist('submission-detail');
       }
-      // change tab
-      changetabnopersist('submission-detail');
+
+      document.querySelector('#submission-box tbody').appendChild(t)
     }
-
-    document.querySelector('#submission-box tbody').appendChild(t)
   }
-
-
   
   // announcements
+  // TODO: FAKE
   const announcements = []; //await betterFetch(`v1/contests/${contest.id}/announcements`);
 
   // If there are announcements, clear the 'no announcements' notice
@@ -512,16 +520,10 @@ const setup = async _ => {
   }
 }
 
-
-
-
-
 document.getElementById('nav-home').onclick = _ => changetab('home')
 document.getElementById('nav-ranklist').onclick = _ => changetab('ranklist')
 document.getElementById('nav-submission').onclick = _ => changetab('submission')
 document.getElementById('nav-announcement').onclick = _ => changetab('announcement')
-
-
 
 awaitNavBar(setup)
 </script>
