@@ -4,7 +4,7 @@ import { type TeamInvitation, type NewTeam, type Team, type TeamMembers } from '
 import { ConflictError, MethodNotAllowedError, NotFoundError } from 'http-errors-enhanced'
 import { nanoid } from 'nanoid'
 import gravatarUrl from 'gravatar-url'
-import { USER_CACHE_KEY, deleteCache } from './cache.services.js'
+import { USER_CACHE_KEY, deleteCache } from '@argoncs/common'
 
 export async function createTeam ({ newTeam, contestId, userId }: { newTeam: NewTeam, contestId: string, userId: string }): Promise<{ teamId: string }> {
   const id = nanoid()

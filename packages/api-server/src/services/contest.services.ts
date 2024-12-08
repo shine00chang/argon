@@ -1,8 +1,8 @@
-import { MongoServerError, contestCollection, contestProblemCollection, contestProblemListCollection, contestSeriesCollection, domainProblemCollection, mongoClient, ranklistRedis, recalculateTeamTotalScore, teamScoreCollection } from '@argoncs/common'
-import { type NewContestSeries, type ConetstProblemList, type Contest, type ContestProblem, type NewContest, type TeamScore, type ContestSeries } from '@argoncs/types'
+import { MongoServerError, contestCollection, contestProblemCollection, contestProblemListCollection, contestSeriesCollection, mongoClient, ranklistRedis, recalculateTeamTotalScore, teamScoreCollection } from '@argoncs/common'
+import { type NewContestSeries, type ConetstProblemList, type Contest, type NewContest, type TeamScore, type ContestSeries } from '@argoncs/types'
 import { ConflictError, MethodNotAllowedError, NotFoundError } from 'http-errors-enhanced'
 import { nanoid } from 'nanoid'
-import { CONTEST_CACHE_KEY, CONTEST_PATH_CACHE_KEY, PROBLEMLIST_CACHE_KEY, deleteCache, fetchCacheUntilLockAcquired, releaseLock, setCache } from './cache.services.js'
+import { CONTEST_CACHE_KEY, CONTEST_PATH_CACHE_KEY, PROBLEMLIST_CACHE_KEY, deleteCache, fetchCacheUntilLockAcquired, releaseLock, setCache } from '@argoncs/common'
 
 export async function createContest ({ newContest, domainId }: { newContest: NewContest, domainId: string }): Promise<{ contestId: string }> {
   const id = nanoid()
@@ -135,66 +135,30 @@ export async function fetchContestProblemList ({ contestId }: { contestId: strin
   }
 }
 
-export async function syncProblemToContest ({ contestId, problemId }: { contestId: string, problemId: string }): Promise<{ modified: boolean }> {
-  const session = mongoClient.startSession()
-  let modifiedCount = 0
-  try {
-    await session.withTransaction(async () => {
-      const contest = await contestCollection.findOne({ id: contestId }, { session })
-      if (contest == null) throw new NotFoundError('Contest not found')
-
-      const problem = await domainProblemCollection.findOne({ id: problemId, domainId: contest.domainId }, { session })
-      if (problem == null) throw new NotFoundError('Problem not found')
-
-      const contestProblem: any = { ...problem, obsolete: false, contestId }
-      delete contestProblem._id;
-      const { modifiedCount: modifiedProblem } = await contestProblemCollection.updateOne({ id: problemId }, { $set: { ...contestProblem } }, { upsert: true })
-      modifiedCount += Math.floor(modifiedProblem)
-
-
-      await contestProblemListCollection.updateOne(
-        { id: contestId },
-        { $pull: { problems: { id: contestProblem.id } } }
-      )
-
-      const { modifiedCount: modifiedList } = await contestProblemListCollection.updateOne(
-        { id: contestId },
-        { $addToSet: { problems: { id: contestProblem.id, name: contestProblem.name } } }
-      )
-      modifiedCount += Math.floor(modifiedList)
-    })
-  } finally {
-    await session.endSession()
-  }
-
-  const modified = modifiedCount > 0
-  if (modified) {
-    await deleteCache({ key: `${PROBLEMLIST_CACHE_KEY}:${contestId}` })
-  }
-
-  return { modified: modifiedCount > 0 }
-}
-
 export async function removeProblemFromContest ({ contestId, problemId }: { contestId: string, problemId: string }): Promise<void> {
   const session = mongoClient.startSession()
   try {
     await session.withTransaction(async () => {
+      // remove problem
       const contestProblem = await contestProblemCollection.findOneAndDelete({ id: problemId, contestId })
       if (contestProblem == null) {
         throw new NotFoundError('Problem not found')
       }
 
+      // remove from list
       await contestProblemListCollection.updateOne(
         { id: contestId },
         { $pull: { problems: { id: contestProblem.id, name: contestProblem.name } } }
       )
 
+      // remove from scores
       await teamScoreCollection.updateMany({ contestId },
         { $unset: { [`scores.${problemId}`]: '' } }
       )
       await teamScoreCollection.updateMany({ contestId },
         { $unset: { [`time.${problemId}`]: '' } }
       )
+      // recalc
       await recalculateTeamTotalScore({ contestId })
     })
   } finally {

@@ -6,39 +6,27 @@ import {
   type Submission,
   type Problem
 } from '@argoncs/types' /*=*/
-import { rabbitMQ, judgerExchange, judgerTasksKey, submissionCollection, fetchDomainProblem, fetchContestProblem } from '@argoncs/common'
+import { rabbitMQ, judgerExchange, judgerTasksKey, submissionCollection, fetchContestProblem } from '@argoncs/common'
 import { languageConfigs } from '../../configs/language.configs.js'
 
 import { nanoid } from 'nanoid'
-import { MethodNotAllowedError } from 'http-errors-enhanced'
 
-async function createSubmission ({ submission, userId, target }: { submission: NewSubmission, userId: string, target: { problemId: string, domainId: string } | { problemId: string, contestId: string, teamId?: string } }): Promise<{ submissionId: string }> {
-  let problem: Problem
-  const { problemId } = target
-  if ('contestId' in target) {
-    problem = await fetchContestProblem({ problemId, contestId: target.contestId })
-  } else {
-    problem = await fetchDomainProblem({ problemId, domainId: target.domainId })
-  }
-
-  if (problem.testcases == null) {
-    throw new MethodNotAllowedError('Problem does not have testcases uploaded')
-  }
+export async function createSubmission (
+  { submission, userId, problemId, contestId, teamId }:
+  { submission: NewSubmission, userId: string, problemId: string, contestId: string, teamId?: string }): Promise<{ submissionId: string }> 
+{
+  const problem = await fetchContestProblem({ problemId })
 
   const submissionId = nanoid()
   const pendingSubmission: Submission = {
     ...submission,
     id: submissionId,
     status: SubmissionStatus.Compiling,
-    domainId: problem.domainId,
     problemId: problem.id,
+    teamId,
     userId,
+    contestId,
     createdAt: (new Date()).getTime()
-  }
-
-  if ('contestId' in target) {
-    pendingSubmission.contestId = target.contestId
-    pendingSubmission.teamId = target.teamId
   }
 
   await submissionCollection.insertOne(pendingSubmission)
@@ -55,22 +43,6 @@ async function createSubmission ({ submission, userId, target }: { submission: N
   return { submissionId }
 }
 
-export async function createTestingSubmission ({ submission, problemId, userId, domainId }: { submission: NewSubmission, problemId: string, userId: string, domainId: string }): Promise<{ submissionId: string }> {
-  return await createSubmission({ submission, userId, target: { problemId, domainId } })
-}
-
-export async function createContestSubmission ({ submission, problemId, userId, contestId, teamId = undefined }: { submission: NewSubmission, problemId: string, userId: string, contestId: string, teamId?: string }): Promise<{ submissionId: string }> {
-  return await createSubmission({ submission, userId, target: { problemId, contestId, teamId } })
-}
-
-export async function markSubmissionAsCompiling ({ submissionId }: { submissionId: string }): Promise<void> {
-  await submissionCollection.updateOne({ id: submissionId }, {
-    $set: {
-      status: SubmissionStatus.Compiling
-    }
-  })
-}
-
-export async function querySubmissions ({ query }: { query: { problemId?: string, teamId?: string, userId?: string, contestId?: string, domainId?: string } }): Promise<Submission[]> {
+export async function querySubmissions ({ query }: { query: { problemId?: string, teamId?: string, userId?: string, contestId?: string } }): Promise<Submission[]> {
   return await submissionCollection.find(query).sort({ createdAt: -1 }).toArray()
 }

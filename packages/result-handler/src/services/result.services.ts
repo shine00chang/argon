@@ -1,4 +1,4 @@
-import { fetchContestProblem, fetchDomainProblem, fetchSubmission, judgerExchange, judgerTasksKey, rabbitMQ, ranklistRedis, recalculateTeamTotalScore, submissionCollection, teamScoreCollection, domainProblemCollection } from '@argoncs/common'
+import { contestProblemCollection, fetchContestProblem, fetchSubmission, judgerExchange, judgerTasksKey, rabbitMQ, ranklistRedis, recalculateTeamTotalScore, submissionCollection, teamScoreCollection } from '@argoncs/common'
 import { type CompilingResult, CompilingStatus, type GradingResult, GradingStatus, type GradingTask, JudgerTaskType, type Problem, SubmissionStatus, type CompilingCheckerResult  } from '@argoncs/types' /*=*/
 import { NotFoundError } from 'http-errors-enhanced'
 import path from 'path'
@@ -24,11 +24,9 @@ export async function handleCompileResult (compileResult: CompilingResult, submi
   }
 
 
-  const { problemId, domainId, contestId } = submission
+  const { problemId } = submission
 
-  let problem: Problem = contestId == null ?
-    await fetchDomainProblem({ problemId, domainId }) : 
-    await fetchContestProblem({ problemId, contestId })
+  let problem: Problem = await fetchContestProblem({ problemId });
 
   if (problem.testcases == null) {
     await completeGrading(submissionId, 'Problem does not have testcases');
@@ -80,10 +78,8 @@ export async function handleCompileResult (compileResult: CompilingResult, submi
 
 export async function completeGrading (submissionId: string, log?: string): Promise<void> {
   const submission = await fetchSubmission({ submissionId })
-  const { problemId, domainId, contestId, teamId, status, createdAt } = submission;
-  const { partials } = contestId == null ?
-      await fetchDomainProblem({ problemId, domainId }) : 
-      await fetchContestProblem({ problemId, contestId })
+  const { problemId, contestId, teamId, status, createdAt } = submission;
+  const { partials } = await fetchContestProblem({ problemId })
 
   // Unexpected status
   if (status !== SubmissionStatus.Compiling &&
@@ -170,5 +166,5 @@ export async function handleCompileCheckerResult (result: CompilingCheckerResult
 
   const checker = result.checker;
   console.log('checker compilation result recieved: ', checker);
-  await domainProblemCollection.updateOne({ id: problemId }, { $set: { checker }});
+  await contestProblemCollection.updateOne({ id: problemId }, { $set: { checker }});
 }

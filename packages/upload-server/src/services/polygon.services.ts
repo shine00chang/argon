@@ -1,19 +1,20 @@
 import { nanoid } from 'nanoid'
-import { CompilingCheckerTask, JudgerTaskType, Problem, type Constraints, type NewProblem } from '@argoncs/types' /*=*/
+import { CompilingCheckerTask, JudgerTaskType, Problem, type Constraints } from '@argoncs/types' /*=*/
 import { type MultipartFile } from '@fastify/multipart' /*=*/
 import { exec as exec_sync } from 'node:child_process'
 import { promisify } from 'node:util'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { BadRequestError, UnauthorizedError } from 'http-errors-enhanced'
-import { domainProblemCollection, judgerTasksKey, judgerExchange, rabbitMQ } from '@argoncs/common'
+import { judgerTasksKey, judgerExchange, rabbitMQ, contestProblemCollection, contestProblemListCollection } from '@argoncs/common'
 import { minio, uploadSessionCollection } from '@argoncs/common'
+import { deleteCache, PROBLEMLIST_CACHE_KEY } from '@argoncs/common';
 import type internal from 'node:stream'
 
 const exec = promisify(exec_sync)
 
 /* Extracts content from polygon package archive, updates problem data, and uploads testcases */
-export async function uploadPolygon ({ domainId, replaceId, archive }: { domainId: string, replaceId?: string, archive: MultipartFile}):
+export async function uploadPolygon ({ contestId, replaceId, archive }: { contestId: string, replaceId?: string, archive: MultipartFile}):
   Promise<string>
 {
   // Make working directory
@@ -53,7 +54,7 @@ export async function uploadPolygon ({ domainId, replaceId, archive }: { domainI
   // Create Problem
   const problem: Problem = {
     id: replaceId ?? nanoid(),
-    domainId,
+    contestId,
     name: statement.name,
     context,
     note,
@@ -69,7 +70,6 @@ export async function uploadPolygon ({ domainId, replaceId, archive }: { domainI
   // Get testcase names
   const file_names = await fs.readdir(path.join(work_path, 'tests'))
   const test_names = file_names.filter(file => file !== 'archive' && !file.endsWith('.a'))
-  console.log(test_names)
 
   // For each file, upload file and answer.
   for (const name of test_names) {
@@ -84,11 +84,25 @@ export async function uploadPolygon ({ domainId, replaceId, archive }: { domainI
       output,
     })
   }
-  console.log('problem: ', problem)
+  console.log('added problem: ', problem.name)
 
   // If ID exists, replace problem, else insert problem
   // The ID is set to replace ID if it exists. see above
-  await domainProblemCollection.updateOne({ id: problem.id }, { $set: problem }, { upsert: true })
+  await contestProblemCollection.updateOne({ id: problem.id }, { $set: problem }, { upsert: true })
+
+  // Add to problem list
+  await contestProblemListCollection.updateOne(
+    { id: contestId },
+    { $pull: { problems: { id: problem.id } } }
+  )
+  const { modifiedCount } = await contestProblemListCollection.updateOne(
+    { id: contestId },
+    { $addToSet: { problems: { id: problem.id, name: problem.name } } }
+  )
+
+  // Invalidate cache if problem changed
+  if (modifiedCount)
+    await deleteCache({ key: `${PROBLEMLIST_CACHE_KEY}:${contestId}` })
 
   // Compile checker
   const checkerSource = (await fs.readFile(path.join(work_path, 'check.cpp'))).toString()
@@ -121,7 +135,7 @@ export async function uploadTestcase ({ problemId, filename, stream }:{
 }
 
 /* Consumes an upload session, returns the domain and the problem to be replaced, if it exists */
-export async function consumePolygonUploadSession (uploadId: string): Promise<{ domainId: string, replaceId?: string }> {
+export async function consumePolygonUploadSession (uploadId: string): Promise<{ contestId: string, replaceId?: string }> {
   const upload = await uploadSessionCollection.findOneAndDelete({ id: uploadId })
   if (upload == null) {
     throw new UnauthorizedError('Invalid upload session token')

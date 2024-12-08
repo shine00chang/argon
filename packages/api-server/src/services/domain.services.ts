@@ -3,7 +3,7 @@ import { mongoClient, domainCollection, userCollection } from '@argoncs/common'
 import { NotFoundError } from 'http-errors-enhanced'
 
 import { nanoid } from 'nanoid'
-import { USER_CACHE_KEY, deleteCache } from './cache.services.js'
+import { USER_CACHE_KEY, deleteCache } from '@argoncs/common'
 
 export async function createDomain ({ newDomain }: { newDomain: NewDomain }): Promise<{ domainId: string }> {
   const domainId = nanoid()

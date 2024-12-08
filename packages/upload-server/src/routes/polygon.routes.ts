@@ -32,7 +32,7 @@ export async function polygonRoutes (routes: FastifyTypeBox): Promise<void> {
     },
     async (request, reply) => {
       const { uploadId } = request.params
-      const { domainId, replaceId } = await consumePolygonUploadSession(uploadId)
+      const { contestId, replaceId } = await consumePolygonUploadSession(uploadId)
 
       try {
         const archive: MultipartFile | undefined = await request.file()
@@ -40,7 +40,7 @@ export async function polygonRoutes (routes: FastifyTypeBox): Promise<void> {
           throw new BadRequestError('No file found in request')
         }
 
-        const problemId = await uploadPolygon({ domainId, replaceId, archive })
+        const problemId = await uploadPolygon({ contestId, replaceId, archive })
 
         return await reply.status(201).send({ problemId })
       } catch (err) {

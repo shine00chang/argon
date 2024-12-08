@@ -4,9 +4,6 @@ import {
   ContestSeriesSchema,
   NewContestSchema,
   NewDomainSchema,
-  NewProblemSchema,
-  NewSubmissionSchema,
-  ProblemSchema,
   DomainMembersSchema,
   DomainSchema,
   NewContestSeriesSchema
@@ -22,11 +19,7 @@ import {
 import { isSuperAdmin } from '../../auth/role.auth.js'
 import { hasDomainPrivilege } from '../../auth/scope.auth.js'
 import { type FastifyTypeBox } from '../../types.js' /*=*/
-import { deleteDomainProblem, fetchDomainProblems } from '../../services/problem.services.js'
-import { fetchDomainProblem } from '@argoncs/common'
-import { createTestingSubmission } from '../../services/submission.services.js'
-import { createPolygonUploadSession } from '../../services/testcase.services.js'
-import { UnauthorizedError, badRequestSchema, forbiddenSchema, methodNotAllowedSchema, notFoundSchema, unauthorizedSchema } from 'http-errors-enhanced'
+import { badRequestSchema, forbiddenSchema, notFoundSchema, unauthorizedSchema } from 'http-errors-enhanced'
 import { createContest, createContestSeries, fetchDomainContestSeries, fetchDomainContests } from '../../services/contest.services.js'
 import { userAuthHook } from '../../hooks/authentication.hooks.js'
 /*=*/
@@ -101,157 +94,6 @@ async function domainMemberRoutes (memberRoutes: FastifyTypeBox): Promise<void> 
       const { domainId, userId } = request.params
       await removeDomainMember({ domainId, userId })
       return await reply.status(204).send()
-    }
-  )
-}
-
-async function domainProblemRoutes (problemRoutes: FastifyTypeBox): Promise<void> {
-  problemRoutes.get(
-    '/',
-    {
-      schema: {
-        response: {
-          200: Type.Array(ProblemSchema),
-          400: badRequestSchema,
-          401: unauthorizedSchema,
-          403: forbiddenSchema
-        },
-        params: Type.Object({ domainId: Type.String() })
-      },
-      onRequest: [userAuthHook, problemRoutes.auth([
-        [hasDomainPrivilege(['problem.read'])]
-      ]) as any]
-    },
-    async (request, reply) => {
-      const { domainId } = request.params
-      const problems = await fetchDomainProblems({ domainId })
-      return await reply.status(200).send(problems)
-    }
-  )
-
-  problemRoutes.delete(
-    '/:problemId',
-    {
-      schema: {
-        params: Type.Object({ domainId: Type.String(), problemId: Type.String() }),
-        response: {
-          400: badRequestSchema,
-          401: unauthorizedSchema,
-          403: forbiddenSchema,
-          404: notFoundSchema
-        }
-      },
-      onRequest: [userAuthHook, problemRoutes.auth([
-        [hasDomainPrivilege(['problem.manage'])]
-      ]) as any]
-    },
-    async (request, reply) => {
-      const { problemId, domainId } = request.params
-      await deleteDomainProblem({ problemId, domainId })
-      return await reply.status(204).send()
-    }
-  )
-
-  problemRoutes.get(
-    '/:problemId',
-    {
-      schema: {
-        params: Type.Object({ domainId: Type.String(), problemId: Type.String() }),
-        response: {
-          200: ProblemSchema,
-          400: badRequestSchema,
-          401: unauthorizedSchema,
-          403: forbiddenSchema,
-          404: notFoundSchema
-        }
-      },
-      onRequest: [userAuthHook, problemRoutes.auth([
-        [hasDomainPrivilege(['problem.read'])]
-      ]) as any]
-    },
-    async (request, reply) => {
-      const { problemId, domainId } = request.params
-      const problem = await fetchDomainProblem({ problemId, domainId })
-      return await reply.status(200).send(problem)
-    }
-  )
-
-  problemRoutes.post(
-    '/:problemId/submissions',
-    {
-      schema: {
-        body: NewSubmissionSchema,
-        params: Type.Object({ domainId: Type.String(), problemId: Type.String() }),
-        response: {
-          202: Type.Object({ submissionId: Type.String() }),
-          400: badRequestSchema,
-          401: unauthorizedSchema,
-          403: forbiddenSchema,
-          404: notFoundSchema,
-          405: methodNotAllowedSchema
-        }
-      },
-      onRequest: [userAuthHook, problemRoutes.auth([
-        [hasDomainPrivilege(['problem.test'])]
-      ]) as any]
-    },
-    async (request, reply) => {
-      if (request.user == null) {
-        throw new UnauthorizedError('User not logged in')
-      }
-
-      const submission = request.body
-      const { domainId, problemId } = request.params
-      const created = await createTestingSubmission({ submission, problemId, userId: request.user.id, domainId })
-      return await reply.status(202).send(created)
-    }
-  )
-
-  problemRoutes.get(
-    '/polygon-upload-session',
-    {
-      schema: {
-        response: {
-          200: Type.Object({ uploadId: Type.String() }),
-          400: badRequestSchema,
-          401: unauthorizedSchema,
-          403: forbiddenSchema,
-          404: notFoundSchema
-        },
-        params: Type.Object({ domainId: Type.String() })
-      },
-      onRequest: [userAuthHook, problemRoutes.auth([
-        [hasDomainPrivilege(['problem.manage'])]
-      ]) as any]
-    },
-    async (request, reply) => {
-      const { domainId } = request.params
-      const { uploadId } = await createPolygonUploadSession({ domainId })
-      await reply.status(200).send({ uploadId })
-    }
-  )
-
-  problemRoutes.get(
-    '/:problemId/polygon-upload-session',
-    {
-      schema: {
-        response: {
-          200: Type.Object({ uploadId: Type.String() }),
-          400: badRequestSchema,
-          401: unauthorizedSchema,
-          403: forbiddenSchema,
-          404: notFoundSchema
-        },
-        params: Type.Object({ domainId: Type.String(), problemId: Type.String() }),
-      },
-      onRequest: [userAuthHook, problemRoutes.auth([
-        [hasDomainPrivilege(['problem.manage'])]
-      ]) as any]
-    },
-    async (request, reply) => {
-      const { domainId, problemId } = request.params
-      const { uploadId } = await createPolygonUploadSession({ domainId, replaceId: problemId })
-      await reply.status(200).send({ uploadId })
     }
   )
 }
@@ -428,7 +270,6 @@ export async function domainRoutes (routes: FastifyTypeBox): Promise<void> {
   )
 
   await routes.register(domainMemberRoutes, { prefix: '/:domainId/members' })
-  await routes.register(domainProblemRoutes, { prefix: '/:domainId/problems' })
   await routes.register(domainContestRoutes, { prefix: '/:domainId/contests' })
   await routes.register(domainContestSeriesRoutes, { prefix: '/:domainId/contest-series' })
 }

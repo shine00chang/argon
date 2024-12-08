@@ -101,16 +101,6 @@
 <div id='domain-list'>
 </div>
 
-<h2>Problems</h2>
-<button id='problem-polygon'>add</button>
-<button id='problem-polygon-replace'>replace</button> (zipped package)
-<input type="file" id="problem-polygon-input"> <br>
-<button id='problem-get'>get</button> 
-<button id='problem-delete'>delete</button> <br>
-
-<div id='problem-list'>
-</div>
-
 <h2>Series</h2>
 <input type="text" id="series-name" placeholder="name"><br>
 <button id='series-add'>add</button> <br>
@@ -132,11 +122,14 @@
 <div id='contest-list'>
 </div>
 
-<h2>Contest Problems</h2>
-<button id='contest-problem-get'>get</button> 
-<button id='contest-problem-delete'>delete</button> <br>
+<h2>Problems</h2>
+<button id='problem-add'>add</button>
+<button id='problem-replace'>replace</button> (zipped package)
+<input type="file" id="problem-input"> <br>
+<button id='problem-get'>get</button> 
+<button id='problem-delete'>delete</button>
+<div id='problem-list'>
 
-<div id='contest-problem-list'>
 </div>
 
 <h2>Publish</h2>
@@ -151,7 +144,6 @@
   const getProblemId = _ => {let e = document.querySelector('input[name="problem-radio"]:checked'); return e ? e.value : undefined;};
   const getSeriesId = _ => {let e = document.querySelector('input[name="series-radio"]:checked'); return e ? e.value : undefined;};
   const getContestId = _ => {let e = document.querySelector('input[name="contest-radio"]:checked'); return e ? e.value : undefined;};
-  const getContestProblemId = _ => {let e = document.querySelector('input[name="contest-problem-radio"]:checked'); return e ? e.value : undefined;};
   const getTestcaseId = _ => {let e = document.querySelector('input[name="testcase-radio"]:checked'); return e ? e.value : undefined;};
 
   const betterFetch = (url, options) => 
@@ -344,26 +336,26 @@
 
     console.log('problem-delete');
 
-    if (getDomainId() === undefined) return alert('no domain selected');
+    if (getContestId() === undefined) return alert('no domain selected');
     if (getProblemId() === undefined) return alert('no problem selected');
 
-    await betterFetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}`, { method: 'DELETE' })
+    await betterFetch(`/v1/contests/${getContestId()}/problems/${getProblemId()}`, { method: 'DELETE' })
       .then(_ => alert('problem deleted'))
   }
 
-  document.getElementById('problem-polygon').onclick = async _ => {
+  document.getElementById('problem-add').onclick = async _ => {
 
-    console.log('problem-polygon');
+    console.log('problem-add');
 
-    if (getDomainId() === undefined) return alert('no domain selected');
+    if (getContestId() === undefined) return alert('no contest selected');
     
-    if (!document.getElementById('problem-polygon-input').files[0])
+    if (!document.getElementById('problem-input').files[0])
       return alert('no polygon file selected');
 
-    const { uploadId } = await betterFetch(`/v1/domains/${getDomainId()}/problems/polygon-upload-session`);
+    const { uploadId } = await betterFetch(`/v1/contests/${getContestId()}/problems/polygon-upload-session`);
 
     const formData = new FormData();
-    formData.append('package', document.getElementById('problem-polygon-input').files[0]);
+    formData.append('package', document.getElementById('problem-input').files[0]);
 
     const res = await betterFetch(uploadURL + `/polygon/${uploadId}`, {
       method: "POST",
@@ -372,56 +364,57 @@
       .then(res => alert('package uploaded'))
   }
 
-  document.getElementById('problem-polygon-replace').onclick = async _ => {
+  document.getElementById('problem-replace').onclick = async _ => {
 
-    console.log('problem-polygon-replace');
+    console.log('problem-replace');
 
-    if (getDomainId() === undefined) return alert('no domain selected');
+    if (getContestId() === undefined) return alert('no contest selected');
     if (getProblemId() === undefined) return alert('no problem selected');
     
-    if (!document.getElementById('problem-polygon-input').files[0])
+    if (!document.getElementById('problem-input').files[0])
       return alert('no polygon file selected');
 
-    const { uploadId } = await betterFetch(`/v1/domains/${getDomainId()}/problems/${getProblemId()}/polygon-upload-session`);
+    const { uploadId } = await betterFetch(`/v1/contests/${getContestId()}/problems/${getProblemId()}/polygon-upload-session`);
 
     const formData = new FormData();
-    formData.append('package', document.getElementById('problem-polygon-input').files[0]);
+    formData.append('package', document.getElementById('problem-input').files[0]);
 
     const res = await betterFetch(uploadURL + `/polygon/${uploadId}`, {
       method: "POST",
       body: formData 
     })
       .then(res => alert('package uploaded'))
+  }
+
+  document.getElementById('problem-delete').onclick = async _ => {
+
+    console.log('problem-delete');
+
+    if (getContestId() === undefined) return alert('no contest selected');
+    if (getProblemId() === undefined) return alert('no contest problem selected');
+
+    await betterFetch(`/v1/contests/${getContestId()}/problems/${getProblemId()}`, { method: 'DELETE' })
+      .then(_ => alert('problem removed from contest'))
   }
 
   document.getElementById('problem-get').onclick = async _ => {
 
     console.log('problem-get');
 
-    if (getDomainId() === undefined) return alert('no domain selected');
+    if (getContestId() === undefined) return alert('no contest selected');
 
-    const problems = await betterFetch(`/v1/domains/${getDomainId()}/problems/`)
+    const { problems } = await betterFetch(`/v1/contests/${getContestId()}/problems/`)
 
     let html = '';
-    for (const problem of problems) {
-
-      let problemHTML = formatProblem(problem);
-
-      const {id, name} = problem;
-      html += ` 
-      <details>
-        <summary>
-          <input type='radio' name='problem-radio' value='${id}'>
-          <label for='${id}'><b>${name}</b> (<i>${id}</i>)</label>
-        </summary>
-        <p>
-          ${problemHTML}
-        </p>
-      </details>`
+    for (const { name, id } of problems) {
+      html += `
+      <div>
+        <input type='radio' name='problem-radio' value='${id}'>
+        <b>${name}</b>: (<i>${id}</i>)
+      </div>`
     }
-    document.getElementById('problem-list').innerHTML = html;
 
-    mathjax()
+    document.getElementById('problem-list').innerHTML = html;
   }
 
   document.getElementById('series-add').onclick = async _ => {
@@ -536,34 +529,4 @@
       .then(res => alert('contest published'))
   }
 
-  document.getElementById('contest-problem-get').onclick = async _ => {
-
-    console.log('contest-problems-get');
-
-    if (getContestId() === undefined) return alert('no contest selected');
-
-    const { problems } = await betterFetch(`/v1/contests/${getContestId()}/problems/`)
-
-    let html = '';
-    for (const { name, id } of problems) {
-      html += `
-      <div>
-        <input type='radio' name='contest-problem-radio' value='${id}'>
-        <b>${name}</b>: (<i>${id}</i>)
-      </div>`
-    }
-
-    document.getElementById('contest-problem-list').innerHTML = html;
-  }
-
-  document.getElementById('contest-problem-delete').onclick = async _ => {
-
-    console.log('contest-problem-delete');
-
-    if (getContestId() === undefined) return alert('no contest selected');
-    if (getContestProblemId() === undefined) return alert('no contest problem selected');
-
-    await betterFetch(`/v1/contests/${getContestId()}/problems/${getContestProblemId()}`, { method: 'DELETE' })
-      .then(_ => alert('problem removed from contest'))
-  }
 </script>

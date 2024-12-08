@@ -8,7 +8,7 @@ import { promisify } from 'node:util'
 import { nanoid } from 'nanoid'
 
 import { sendEmail } from './emails.services.js'
-import { USER_CACHE_KEY, USER_PATH_CACHE_KEY, deleteCache, fetchCacheUntilLockAcquired, releaseLock, setCache } from './cache.services.js'
+import { USER_CACHE_KEY, USER_PATH_CACHE_KEY, deleteCache, fetchCacheUntilLockAcquired, releaseLock, setCache } from '@argoncs/common'
 const randomBytesAsync = promisify(randomBytes)
 const pbkdf2Async = promisify(pbkdf2)
 

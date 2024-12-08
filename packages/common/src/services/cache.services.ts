@@ -1,4 +1,4 @@
-import { cacheRedis } from '@argoncs/common'
+import { cacheRedis } from '../connections/redis.connections.js'
 import { backOff } from 'exponential-backoff'
 import { ServiceUnavailableError } from 'http-errors-enhanced'
 import { json } from 'typia'

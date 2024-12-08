@@ -1,17 +1,15 @@
 import { Type } from '@sinclair/typebox'
-import { type UserPublicProfile, UserPublicProfileSchema, NewUserSchema, UserPrivateProfileSchema, SubmissionSchema, TeamInvitationSchema } from '@argoncs/types'
+import { type UserPublicProfile, UserPublicProfileSchema, NewUserSchema, UserPrivateProfileSchema, SubmissionSchema, TeamInvitationSchema } from '@argoncs/types' /*=*/
 import { completeVerification, emailExists, fetchUser, initiateVerification, registerUser, queryUsers, userIdExists, usernameExists, fetchUserInvitations } from '../../services/user.services.js'
 import { ownsResource } from '../../auth/ownership.auth.js'
-import { type FastifyTypeBox } from '../../types.js'
+import { type FastifyTypeBox } from '../../types.js' /*=*/
 import { NotFoundError, badRequestSchema, conflictSchema, forbiddenSchema, notFoundSchema, unauthorizedSchema } from 'http-errors-enhanced'
-import { contestNotBegan, contestPublished } from '../../auth/contest.auth.js'
 import { completeTeamInvitation } from '../../services/team.services.js'
-import { hasDomainPrivilege, hasNoPrivilege } from '../../auth/scope.auth.js'
+import { hasDomainPrivilege } from '../../auth/scope.auth.js'
 import { isTeamMember } from '../../auth/team.auth.js'
-import { fetchDomainProblem, fetchSubmission } from '@argoncs/common'
+import { fetchContestProblem, fetchSubmission } from '@argoncs/common'
 import { isSuperAdmin } from '../../auth/role.auth.js'
 import { userAuthHook } from '../../hooks/authentication.hooks.js'
-import { contestInfoHook } from '../../hooks/contest.hooks.js'
 import { submissionInfoHook } from '../../hooks/submission.hooks.js'
 import gravatarUrl from 'gravatar-url'
 import { querySubmissions } from '../../services/submission.services.js'
@@ -139,7 +137,7 @@ async function userSubmissionRoutes (submissionRoutes: FastifyTypeBox): Promise<
       const { userId } = request.params
       const submissions = await querySubmissions({ query: { userId } })
       const _submissions = await Promise.all(submissions.map(async submission => {
-        const { name: problemName } = await fetchDomainProblem({ problemId: submission.problemId, domainId: submission.domainId });
+        const { name: problemName } = await fetchContestProblem({ problemId: submission.problemId });
         return { ...submission, problemName };
       }));
       // NOTE: having some issues with the _submissions object being GC'ed before returning

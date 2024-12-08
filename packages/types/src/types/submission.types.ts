@@ -24,10 +24,9 @@ const BaseSubmissionSchema = Type.Object({
 
   id: Type.String(),
   problemId: Type.String(),
-  domainId: Type.String(),
-  contestId: Type.Optional(Type.String()),
   teamId: Type.Optional(Type.String()),
   userId: Type.String(),
+  contestId: Type.String(),
   createdAt: Type.Number()
 })
 

@@ -1,5 +1,4 @@
 import { type Static, Type } from '@sinclair/typebox'
-import { ContestProblemSchema } from './problem.types.js'
 
 export const NewContestSchema = Type.Object({
   name: Type.String(),
@@ -29,7 +28,7 @@ export type Contest = Static<typeof ContestSchema>
 
 export const ContestProblemListSchema = Type.Object({
   id: Type.String(),
-  problems: Type.Array(Type.Pick(ContestProblemSchema, ['id', 'name']))
+  problems: Type.Array(Type.Object({id: Type.String(), name: Type.String()}))
 })
 export type ConetstProblemList = Static<typeof ContestProblemListSchema>
 

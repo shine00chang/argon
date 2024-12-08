@@ -1,17 +1,9 @@
-import { type ContestProblem, type Problem } from '@argoncs/types'
+import { type Problem } from '@argoncs/types' /*=*/
 import { NotFoundError } from 'http-errors-enhanced'
-import { contestProblemCollection, domainProblemCollection } from '../connections/mongodb.connections.js'
+import { contestProblemCollection } from '../connections/mongodb.connections.js'
 
-export async function fetchDomainProblem ({ problemId, domainId }: { problemId: string, domainId: string }): Promise<Problem> {
-  const problem = await domainProblemCollection.findOne({ id: problemId, domainId })
-  if (problem == null) {
-    throw new NotFoundError('Problem not found')
-  }
-  return problem
-}
-
-export async function fetchContestProblem ({ problemId, contestId }: { problemId: string, contestId: string }): Promise<ContestProblem> {
-  const problem = await contestProblemCollection.findOne({ id: problemId, contestId })
+export async function fetchContestProblem ({ problemId }: { problemId: string }): Promise<Problem> {
+  const problem = await contestProblemCollection.findOne({ id: problemId })
   if (problem == null) {
     throw new NotFoundError('Problem not found')
   }

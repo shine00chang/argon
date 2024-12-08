@@ -1,4 +1,4 @@
-import { type ConetstProblemList, type Contest, type ContestProblem, type Submission, type Domain, type EmailVerification, type Problem, type Team, type TeamInvitation, type User, type UserPrivateSession, type TeamScore, type ContestSeries, type UploadSession } from '@argoncs/types'
+import { type ConetstProblemList, type Contest, type Submission, type Domain, type EmailVerification, type Problem, type Team, type TeamInvitation, type User, type UserPrivateSession, type TeamScore, type ContestSeries, type UploadSession } from '@argoncs/types'
 import { MongoClient, type IndexSpecification, type CreateIndexesOptions, type Db, type Collection } from 'mongodb'
 
 interface Index {
@@ -42,14 +42,6 @@ const collections: CollectionIndex[] = [
     indexes: [
       { keys: { id: 1 }, options: { unique: true } },
       { keys: { createdAt: 1 }, options: { expireAfterSeconds: 172800 } }
-    ]
-  },
-  {
-    name: 'domainProblems',
-    indexes: [
-      { keys: { id: 1 }, options: { unique: true } },
-      { keys: { domainId: 1, id: 1 }, options: { unique: true } },
-      { keys: { domainId: 1, _id: -1 }, options: { unique: true } }
     ]
   },
   {
@@ -121,7 +113,6 @@ export let mongoClient: MongoClient
 export let mongoDB: Db
 export let domainCollection: Collection<Domain>
 export let userCollection: Collection<User>
-export let domainProblemCollection: Collection<Problem>
 export let submissionCollection: Collection<Submission>
 export let sessionCollection: Collection<UserPrivateSession>
 export let emailVerificationCollection: Collection<EmailVerification>
@@ -130,7 +121,7 @@ export let contestCollection: Collection<Contest>
 export let teamCollection: Collection<Team>
 export let teamInvitationCollection: Collection<TeamInvitation>
 export let teamScoreCollection: Collection<TeamScore>
-export let contestProblemCollection: Collection<ContestProblem>
+export let contestProblemCollection: Collection<Problem>
 export let contestProblemListCollection: Collection<ConetstProblemList>
 export let contestSeriesCollection: Collection<ContestSeries>
 
@@ -148,7 +139,6 @@ export async function connectMongoDB (url: string): Promise<void> {
   await Promise.all(indexPromises)
 
   domainCollection = mongoDB.collection('domains')
-  domainProblemCollection = mongoDB.collection('domainProblems')
 
   userCollection = mongoDB.collection('users')
   sessionCollection = mongoDB.collection('sessions')

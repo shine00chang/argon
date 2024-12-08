@@ -7,7 +7,7 @@ import fastifyCors from '@fastify/cors'
 //import { testcaseRoutes } from './routes/testcase.routes.js'
 import { heartbeatRoutes } from './routes/heartbeat.routes.js'
 
-import { connectMinIO, connectMongoDB, connectRabbitMQ, sentry } from '@argoncs/common'
+import { connectCacheRedis, connectMinIO, connectMongoDB, connectRabbitMQ, sentry } from '@argoncs/common'
 
 import fastifySensible from '@fastify/sensible'
 import assert from 'assert'
@@ -29,10 +29,12 @@ export async function startUploadServer (): Promise<void> {
   assert(process.env.MINIO_URL != null)
   assert(process.env.MONGO_URL != null)
   assert(process.env.RABBITMQ_URL != null)
+  assert(process.env.CACHEREDIS_URL != null)
 
   await connectMinIO(process.env.MINIO_URL)
   await connectMongoDB(process.env.MONGO_URL)
   await connectRabbitMQ(process.env.RABBITMQ_URL)
+  await connectCacheRedis(process.env.CACHEREDIS_URL)
 
   await app.register(fastifyHttpErrorsEnhanced, {
     handle404Errors: false,
