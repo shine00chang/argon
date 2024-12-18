@@ -19,61 +19,6 @@
     };
   </script>
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-  <style> 
-    body{
-      margin:40px auto;max-width:700px;line-height:1.6;font-size:18px;color:#444;padding:0 10px;
-      font-family: 'Ariel'
-    }
-    h1,h2,h3{line-height:1.2}
-    input,div,button { margin: 0.2rem }
-    input {
-      padding: 5px 12px;
-      font-size: 14px;
-      line-height: 20px;
-      color: #24292e;
-      vertical-align: middle;
-      background-color: #ffffff;
-      background-repeat: no-repeat;
-      background-position: right 8px center;
-      border: 1px solid #e1e4e8;
-      border-radius: 6px;
-      outline: none;
-      box-shadow: rgba(225, 228, 232, 0.2) 0px 1px 0px 0px inset;
-      :focus{
-          border-color: #0366d6;
-          outline: none;
-          box-shadow: rgba(3, 102, 214, 0.3) 0px 0px 0px 3px;
-      }
-    }
-    button {
-      display: inline-block;
-      outline: 0;
-      cursor: pointer;
-      padding: 5px 16px;
-      font-size: 14px;
-      font-weight: 500;
-      line-height: 20px;
-      vertical-align: middle;
-      border: 1px solid;
-      border-radius: 6px;
-      color: #24292e;
-      background-color: #fafbfc;
-      border-color: #1b1f2326;
-      box-shadow: rgba(27, 31, 35, 0.04) 0px 1px 0px 0px, rgba(255, 255, 255, 0.25) 0px 1px 0px 0px inset;
-      transition: 0.2s cubic-bezier(0.3, 0, 0.5, 1);
-      transition-property: color, background-color, border-color;
-      :hover {
-          background-color: #f3f4f6;
-          border-color: #1b1f2326;
-          transition-duration: 0.1s;
-      }
-    }
-
-    button:disabled {
-      color: #ccc
-    }
-
-  </style>
 </head>
 
 <h1>Argon Admin</h1>
@@ -92,13 +37,33 @@
 <h2>Domains</h2>
 <input type="text" id="domain-name" placeholder="new domain">
 <button id='domain-add'>add</button> <br>
-
-<input type="text" id="domain-user" placeholder="domain user">
-<button id='domain-user-add'>add</button> <br>
-
 <button id='domain-get'>get</button> <br>
 
 <div id='domain-list'>
+</div>
+
+<h2>Perms</h2>
+<input type="text" id="perms-user" placeholder="perms user"><br>
+<input type="radio" id="domain.manage" name="perms-radio" value="domain.manage" />
+<label for="domain.manage">Domain Manager</label>
+<br>
+
+<input type="radio" id="contest.manage" name="perms-radio" value="contest.manage" />
+<label for="contest.manage">Contest Manager</label>
+<br>
+
+<input type="radio" id="contest.test" name="perms-radio" value="contest.test" />
+<label for="contest.test">Contest Tester</label>
+<br>
+
+<input type="radio" id="remove" name="perms-radio" value="remove" />
+<label for="contest.test">Remove</label>
+<br>
+
+<button id='perms-add'>add or update</button> <br>
+<button id='perms-get'>get</button>
+
+<div id='perms-list'>
 </div>
 
 <h2>Series</h2>
@@ -115,9 +80,9 @@
 <input type="number" id="contest-startTime" placeholder="startTime"><br>
 <input type="number" id="contest-endTime" placeholder="endTime"><br>
 <button id='contest-add'>add</button> <br>
-<button id='contest-add-problem'>add problem</button> <br>
 <button id='contest-get'>get</button> 
 <button id='contest-delete'>delete</button> <br>
+<button id='contest-publish'>publish</button>
 
 <div id='contest-list'>
 </div>
@@ -129,11 +94,6 @@
 <button id='problem-get'>get</button> 
 <button id='problem-delete'>delete</button>
 <div id='problem-list'>
-
-</div>
-
-<h2>Publish</h2>
-<button id='contest-publish'>publish</button>
 
 <script>
   const uploadURL = `http://${window.location.hostname}:8001`;
@@ -175,9 +135,11 @@
       trymathjax()
   }
 
-  const formatProblem = problem => 
+  const formatProblem = async (contestId, problemId) => 
   {
-    const {name, constraints, context, inputFormat, outputFormat} = problem;
+    const { name, context, note, constraints, inputFormat, outputFormat, samples } =
+      await betterFetch(`/v1/contests/${contestId}/problems/${problemId}`);
+
     let html = `
     <div style='text-align: center'>
     <h3>${name}</h3>
@@ -190,17 +152,17 @@
     <b>Output</b><br>
     ${outputFormat}<br>`;
 
-    html = html
+    html = html 
       .replaceAll("\\begin{center}", "<p style='text: center'>")
       .replaceAll("\\end{center}", "</p>")
-      .replaceAll("\\begin{enumerate}", "<ol>")
-      .replaceAll("\\item", "<li>")
-      .replaceAll("\\end{enumerate}", "</ol>")
-      .replaceAll("\\begin{itemize}", "<ul>")
-      .replaceAll("\\item", "<li>")
-      .replaceAll("\\end{itemize}", "</ul>")
+      .replaceAll(/\\begin{enumerate}[\r\n ]*/g, "<ul class='list-decimal list-inside'>")
+      .replaceAll(/\\end{enumerate}(?: *\n)?/g, "</ul>")
+      .replaceAll(/\\begin{itemize}[\r\n ]*/g, "<ul class='list-disc list-inside'>")
+      .replaceAll(/\\end{itemize}(?: *\n)?/g, "</ul>")
+      .replaceAll(/\\item(.*)\r?\n/g, "<li>$1</li>")
       .replaceAll(/\\t{(.*?)}/g, "<code>$1</code>")
       .replaceAll(/\\bf{(.*?)}/g, "<b>$1</b>")
+      .replaceAll(/\r?\n/g, "<br style='line-height: 0.7rem'>")
 
     return html;
   }
@@ -272,7 +234,7 @@
     const body = {
       name: document.getElementById('domain-name').value,
       path: document.getElementById('domain-name').value,
-      description: 'testing domain.'
+      description: 'no description'
     };
 
     if (!body.name) return alert('no name');
@@ -284,30 +246,10 @@
     };
 
     await betterFetch('/v1/domains/', options)
-      .then(_ => alert('domain added'))
-  }
-
-  document.getElementById('domain-user-add').onclick = async _ => {
-
-    console.log('domain-user-add');
-
-    if (getDomainId() === undefined) return alert('no domain selected');
-
-    const body = {
-      userId: document.getElementById('domain-user').value,
-      scopes: [ 'domain.manage', 'problem.manage', 'problem.read', 'problem.test', 'contest.manage', 'contest.read']
-    };
-
-    if (!body.userId) return alert('no userId');
-
-    const options = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    };
-
-    await betterFetch(`/v1/domains/${getDomainId()}/members`, options)
-      .then(_ => alert('user added to domain'))
+      .then(_ => {
+        alert('domain added')
+        document.getElementById('domain-get').click()
+      })
   }
 
   document.getElementById('domain-get').onclick = async _ => {
@@ -330,6 +272,70 @@
     }
 
     document.getElementById('domain-list').innerHTML = html;
+  }
+
+  document.getElementById('perms-add').onclick = async _ => {
+
+    console.log('perms-add');
+
+    if (getDomainId() === undefined) return alert('no domain selected');
+
+    let scopes = [];
+    const perm = document.querySelector('input[name="perms-radio"]:checked').value;
+    if (perm == 'domain.manage') 
+      scopes = ['domain.manage', 'contest.read', 'contest.test', 'contest.manage']
+
+    if (perm == 'contest.manage') {
+      if (getContestId() === undefined) return alert('no contest selected');
+      scopes = ['read', 'test', 'manage'].map(x => `contest-${getContestId()}.${x}`)
+    }
+    
+    if (perm == 'contest.test') {
+      if (getContestId() === undefined) return alert('no contest selected');
+      scopes = ['read', 'test'].map(x => `contest-${getContestId()}.${x}`)
+    }
+    if (perm == 'remove') 
+      scopes = []
+
+    const body = {
+      userId: document.getElementById('perms-user').value,
+      scopes,
+    };
+
+    if (!body.userId) return alert('no userId');
+
+    const options = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    };
+
+    await betterFetch(`/v1/domains/${getDomainId()}/members`, options)
+      .then(_ => {
+        alert(`user perms changed to: ${JSON.stringify(scopes)}`);
+        document.getElementById('perms-get').click();
+      })
+  }
+
+  document.getElementById('perms-get').onclick = async _ => {
+    
+    console.log('perms-get');
+
+    if (getDomainId() === undefined) return alert('no domain selected');
+
+    const members = await betterFetch(`/v1/domains/${getDomainId()}/members/`);
+    
+    console.log(members);
+
+    let html = '';
+    for (const { name, id, scopes } of members) {
+      html += `<b>${name}</b>: <i>${id}</i><br>`;
+      for (const scope of scopes[getDomainId()]) {
+        html += `=> ${scope}<br>`
+      }
+    }
+
+    document.getElementById('perms-list').innerHTML = html;
   }
 
   document.getElementById('problem-delete').onclick = async _ => {
@@ -361,7 +367,10 @@
       method: "POST",
       body: formData 
     })
-      .then(res => alert('package uploaded'))
+      .then(res => {
+        alert('package uploaded');
+        document.getElementById('problem-get').click();
+      })
   }
 
   document.getElementById('problem-replace').onclick = async _ => {
@@ -406,12 +415,15 @@
     const { problems } = await betterFetch(`/v1/contests/${getContestId()}/problems/`)
 
     let html = '';
-    for (const { name, id } of problems) {
+    for (const problem of problems) {
       html += `
-      <div>
-        <input type='radio' name='problem-radio' value='${id}'>
-        <b>${name}</b>: (<i>${id}</i>)
-      </div>`
+      <details>
+        <summary>
+          <input type='radio' name='problem-radio' value='${problem.id}'>
+          <b>${problem.name}</b>: (<i>${problem.id}</i>)
+        </summary>
+      ${await formatProblem(getContestId(), problem.id)}
+      </details>`;
     }
 
     document.getElementById('problem-list').innerHTML = html;
@@ -436,7 +448,10 @@
     if (getDomainId() === undefined) return alert('no domain selected');
 
     await betterFetch(`/v1/domains/${getDomainId()}/contest-series`, options)
-      .then(res => alert('series created'));
+      .then(res => {
+        alert('series created');
+        document.getElementById('series-get').click();
+      })
   }
 
   document.getElementById('series-get').onclick = async _ => {
@@ -485,18 +500,11 @@
     };
 
     await betterFetch(`/v1/domains/${getDomainId()}/contests`, options)
-      .then(res => alert('contest created'))
-  }
-
-  document.getElementById('contest-add-problem').onclick = async _ => {
-
-    console.log('contest-add-problem');
-
-    if (getContestId() === undefined) return alert('no contest selected');
-    if (getProblemId() === undefined) return alert('no problem selected');
-
-    await betterFetch(`/v1/contests/${getContestId()}/problems/${getProblemId()}`, { method: 'PUT' })
-      .then(res => alert('problem added to contest'));
+      .then(res => {
+        alert('contest created');
+        document.getElementById('contest-get').click();
+        document.getElementById('problem-get').click();
+      })
   }
 
   document.getElementById('contest-get').onclick = async _ => {
@@ -528,5 +536,4 @@
     await betterFetch(`/v1/contests/${getContestId()}/publish`, { method: 'POST' })
       .then(res => alert('contest published'))
   }
-
 </script>

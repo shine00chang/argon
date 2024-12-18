@@ -13,7 +13,6 @@ import {
   createDomain,
   fetchDomain,
   fetchDomainMembers,
-  removeDomainMember,
   updateDomain
 } from '../../services/domain.services.js'
 import { isSuperAdmin } from '../../auth/role.auth.js'
@@ -49,6 +48,7 @@ async function domainMemberRoutes (memberRoutes: FastifyTypeBox): Promise<void> 
     async (request, reply) => {
       const { domainId } = request.params
       const { userId, scopes } = request.body
+
       await addOrUpdateDomainMember({ domainId, userId, scopes })
       return await reply.status(204).send()
     }
@@ -69,31 +69,7 @@ async function domainMemberRoutes (memberRoutes: FastifyTypeBox): Promise<void> 
     async (request, reply) => {
       const { domainId } = request.params
       const members = await fetchDomainMembers({ domainId })
-      return members
-    }
-  )
-
-  memberRoutes.delete(
-    '/:userId',
-    {
-      schema: {
-        params: Type.Object({ domainId: Type.String(), userId: Type.String() }),
-        response: {
-          400: badRequestSchema,
-          401: unauthorizedSchema,
-          403: forbiddenSchema,
-          404: notFoundSchema
-        }
-      },
-      onRequest: [userAuthHook, memberRoutes.auth([
-        [isSuperAdmin],
-        [hasDomainPrivilege(['domain.manage'])]
-      ]) as any]
-    },
-    async (request, reply) => {
-      const { domainId, userId } = request.params
-      await removeDomainMember({ domainId, userId })
-      return await reply.status(204).send()
+      return await reply.status(200).send(members) 
     }
   )
 }
@@ -217,7 +193,7 @@ export async function domainRoutes (routes: FastifyTypeBox): Promise<void> {
       const newDomain = request.body
       const { domainId } = await createDomain({ newDomain })
       const userId = request.user!.id
-      const scopes = ["domain.manage", "contest.manage", "contest.read", "problem.manage", "problem.read", "problem.test"]; 
+      const scopes = ["domain.manage", "contest.manage", "contest.read", "contest.test"]; 
       await addOrUpdateDomainMember({ domainId, userId, scopes })
 
       return await reply.status(201).send({ domainId })

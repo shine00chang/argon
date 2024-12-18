@@ -12,13 +12,13 @@ import { languageConfigs } from '../../configs/language.configs.js'
 import { nanoid } from 'nanoid'
 
 export async function createSubmission (
-  { submission, userId, problemId, contestId, teamId }:
+  { submission, userId, problemId, contestId, teamId = undefined }:
   { submission: NewSubmission, userId: string, problemId: string, contestId: string, teamId?: string }): Promise<{ submissionId: string }> 
 {
   const problem = await fetchContestProblem({ problemId })
 
   const submissionId = nanoid()
-  const pendingSubmission: Submission = {
+  let pendingSubmission: Submission = {
     ...submission,
     id: submissionId,
     status: SubmissionStatus.Compiling,
@@ -28,6 +28,9 @@ export async function createSubmission (
     contestId,
     createdAt: (new Date()).getTime()
   }
+
+  if (teamId == undefined)
+    delete pendingSubmission.teamId;
 
   await submissionCollection.insertOne(pendingSubmission)
 
@@ -43,6 +46,46 @@ export async function createSubmission (
   return { submissionId }
 }
 
-export async function querySubmissions ({ query }: { query: { problemId?: string, teamId?: string, userId?: string, contestId?: string } }): Promise<Submission[]> {
-  return await submissionCollection.find(query).sort({ createdAt: -1 }).toArray()
+export async function querySubmissions ({ query }: { query: { problemId?: string, teamId?: string, userId?: string, contestId?: string } }):
+  Promise<any> 
+{
+  const submissions = await submissionCollection.aggregate([
+    { $match: query },
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'userId',
+        foreignField: 'id',
+        as: 'user',
+        pipeline: [
+          { $project: { username: 1, name: 1, id: 1 } }
+        ]
+      }
+    },
+    {
+      $lookup: {
+        from: 'contestProblems',
+        localField: 'problemId',
+        foreignField: 'id',
+        as: 'problem',
+        pipeline: [
+          { $project: { name: 1, id: 1 } }
+        ]
+      }
+    },
+   {
+      $set: {
+         user: {$arrayElemAt:["$user",0]},
+         problem: {$arrayElemAt:["$problem",0]}
+      }
+   },
+   {
+       $unset: [ 'userId', 'problemId' ]
+   },
+    {
+      $sort: { createdAt: -1 }
+    }
+  ]).toArray();
+
+  return submissions;
 }

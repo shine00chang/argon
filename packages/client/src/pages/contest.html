@@ -62,6 +62,7 @@
 
     <span class='italic'>id: <span id='id'></span></span> <br>
     <span id='date'></span><br>
+    by: <span id='author' class='font-bold'></span><br>
     status: <span id='status' class='font-bold'></span> <br>
     score: <span id='score' class='font-bold'></span> pts <br>
     for <span id='problem' class='font-bold'></span> <br>
@@ -183,9 +184,6 @@
 </div>
 </template>
 
-
-
-
 </div>
 
 <script>
@@ -258,7 +256,10 @@ const makeProblemElement = async (contestId, problemId) =>
     };
 
     await betterFetch(`/v1/contests/${contestId}/problems/${problemId}/submissions`, options)
-      .then(res => alert('submitted'))
+      .then(res => {
+        alert('submitted');
+        window.location.reload();
+      })
   }
   
   // editor
@@ -335,7 +336,7 @@ const setup = async _ => {
   // === ranklist box ===
   let ranklist, ranklistProblemList;
   try {
-    ({ranklist, problems: ranklistProblemList} = await betterFetch(`/v1/contests/${contest.id}/ranklist`));
+    ({ranklist, problems: ranklistProblemList} = await betterFetch(`/v1/contests/${contest.id}/ranklist`, {}, {failable: true}));
   } catch (e) {
     console.log(e);
     console.log('could not get ranklist.');
@@ -422,7 +423,8 @@ const setup = async _ => {
   // === submission box ===
   let submissions;
   try {
-    submissions = await betterFetch(`/v1/contests/${contest.id}/submissions`, {}, {failable: true});
+    submissions = await betterFetch(`/v1/contests/${contest.id}/submissions`, {}, {failable: true})
+      .then(res => res.json());
   } catch (e) {
     console.log(e);
     console.log('could not get submissions, either not logged in or not a participant to ongoing contest');
@@ -432,15 +434,15 @@ const setup = async _ => {
   {
     document.querySelector('#nav-submission').disabled = false;
     let html = '';
-    for (const { problemId, createdAt, status, score, testcases, id, log, source, language } of submissions) 
+    for (const { problem, user, createdAt, status, score, testcases, id, log, source, language } of submissions) 
     {
       const t = document.querySelector('#submission-template').content.cloneNode(true);
       const e = t.querySelector('#row');
 
       // row
       e.querySelector('#date').innerText = (new Date(createdAt)).toLocaleString();
-      e.querySelector('#user').innerText = g_user.name;
-      e.querySelector('#problem').innerText = problemsMap[problemId].name;
+      e.querySelector('#user').innerText = user.name;
+      e.querySelector('#problem').innerText = problem.name;
       e.querySelector('#status').innerText = status;
       e.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
 
@@ -454,8 +456,9 @@ const setup = async _ => {
 
         // set props
         b.querySelector('#id').innerText = id;
+        b.querySelector('#author').innerText = user.name;
         b.querySelector('#date').innerText = (new Date(createdAt)).toLocaleString();
-        b.querySelector('#problem').innerText = problemsMap[problemId].name;
+        b.querySelector('#problem').innerText = problems.name;
         b.querySelector('#status').innerText = status; 
         b.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
         b.querySelector('#log pre').innerText = log ?? '';

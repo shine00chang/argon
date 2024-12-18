@@ -177,49 +177,9 @@ async function contestProblemRoutes (problemRoutes: FastifyTypeBox): Promise<voi
         problemId,
         userId: (request.user).id,
         contestId,
-        teamId: request.user.teams[contestId] 
+        teamId: request.user.teams[contestId] ?? undefined
       })
       return await reply.status(202).send(created)
-    }
-  )
-
-  problemRoutes.get(
-    '/:problemId/submissions',
-    {
-      schema: {
-        params: Type.Object({ contestId: Type.String(), problemId: Type.String() }),
-        response: {
-          200: Type.Array(SubmissionSchema),
-          400: badRequestSchema,
-          401: unauthorizedSchema,
-          403: forbiddenSchema
-        }
-      },
-      onRequest: [userAuthHook, problemRoutes.auth([
-        [hasDomainPrivilege(['contest.test'])],
-        [hasContestPrivilege(['test'])],
-        [registeredForContest, contestBegan]
-      ]) as any]
-    },
-    async (request, reply) => {
-      const auth = requestUserProfile(request)
-      const { contestId, problemId } = request.params
-
-      if (!('domainId' in request.params) || typeof request.params.domainId !== 'string' || !(request.params.domainId in auth.scopes)) {
-        // User is a regular participant
-        const submissions = await querySubmissions({ query: { contestId, problemId, teamId: auth.teams[contestId] } })
-        return await reply.status(200).send(submissions)
-      } else {
-        if ((Boolean(auth.scopes[request.params.domainId].includes('contest.manage'))) || (Boolean(auth.scopes[request.params.domainId].includes(`contest-${contestId}.manage`)))) {
-          // User is an admin with access to all users' submissions
-          const submissions = await querySubmissions({ query: { contestId, problemId } })
-          return await reply.status(200).send(submissions)
-        } else {
-          // User is a tester
-          const submissions = await querySubmissions({ query: { contestId, problemId, userId: auth.id } })
-          return await reply.status(200).send(submissions)
-        }
-      }
     }
   )
 
@@ -237,7 +197,7 @@ async function contestProblemRoutes (problemRoutes: FastifyTypeBox): Promise<voi
         params: Type.Object({ contestId: Type.String() })
       },
       onRequest: [userAuthHook, problemRoutes.auth([
-        [hasDomainPrivilege(['problem.manage'])]
+        [hasDomainPrivilege(['contest.manage'])]
       ]) as any]
     },
     async (request, reply) => {
@@ -261,7 +221,7 @@ async function contestProblemRoutes (problemRoutes: FastifyTypeBox): Promise<voi
         params: Type.Object({ contestId: Type.String(), problemId: Type.String() }),
       },
       onRequest: [userAuthHook, problemRoutes.auth([
-        [hasDomainPrivilege(['problem.manage'])]
+        [hasDomainPrivilege(['contest.manage'])]
       ]) as any]
     },
     async (request, reply) => {
@@ -510,35 +470,6 @@ async function contestTeamRoutes (teamRoutes: FastifyTypeBox): Promise<void> {
       return await reply.status(200).send(result)
     }
   )
-
-  teamRoutes.get(
-    '/:teamId/submissions',
-    {
-      schema: {
-        params: Type.Object({ contestId: Type.String(), teamId: Type.String() }),
-        response: {
-          200: Type.Array(SubmissionSchema),
-          400: badRequestSchema,
-          401: unauthorizedSchema,
-          403: forbiddenSchema
-        }
-      },
-      onRequest: [userAuthHook, teamRoutes.auth([
-        [hasDomainPrivilege(['contest.manage'])],
-        [hasContestPrivilege(['manage'])],
-        [isTeamMember, contestBegan]
-      ]) as any]
-    },
-    async (request, reply) => {
-      if (request.user == null) {
-        throw new UnauthorizedError('User not logged in')
-      }
-
-      const { contestId, teamId } = request.params
-      const submissions = await querySubmissions({ query: { contestId, teamId } })
-      return await reply.status(200).send(submissions)
-    }
-  )
 }
 
 async function contestRanklistRoutes (ranklistRoutes: FastifyTypeBox): Promise<void> {
@@ -655,7 +586,7 @@ export async function contestRoutes (routes: FastifyTypeBox): Promise<void> {
       schema: {
         params: Type.Object({ contestId: Type.String() }),
         response: {
-          200: Type.Array(SubmissionSchema),
+          200: Type.Any(),
           400: badRequestSchema,
           401: unauthorizedSchema,
           403: forbiddenSchema,
@@ -674,12 +605,50 @@ export async function contestRoutes (routes: FastifyTypeBox): Promise<void> {
       if (request.user == null) {
         throw new UnauthorizedError('User not logged in')
       }
+
       const { contestId } = request.params
-      const query = { contestId, userId: request.user.id }
-      const submissions = await querySubmissions({ query })
       
-      console.log('submissions fetched: ', submissions.length);
-      return await reply.status(200).send(submissions)
+      // query for participant
+      let query: any = { contestId, teamId: request.user.teams[contestId] }
+
+      // query for testers
+      if (query.teamId == undefined) 
+        query = { contestId, userId: request.user.id };
+      
+      console.log(query);
+
+      const submissions = await querySubmissions({ query })
+      console.log(submissions);
+      return await reply.status(200).send(JSON.stringify(submissions))
+    })
+
+  routes.get(
+    '/:contestId/all-submissions',
+    {
+      schema: {
+        params: Type.Object({ contestId: Type.String() }),
+        response: {
+          200: Type.Any(),
+          400: badRequestSchema,
+          401: unauthorizedSchema,
+          403: forbiddenSchema,
+          404: notFoundSchema
+        }
+      },
+      onRequest: [contestInfoHook, userAuthHook, routes.auth([
+        [hasDomainPrivilege(['contest.manage'])],
+        [hasContestPrivilege(['manage'])]
+      ]) as any]
+    },
+    async (request, reply) => {
+      if (request.user == null) {
+        throw new UnauthorizedError('User not logged in')
+      }
+
+      const { contestId } = request.params
+      const query = { contestId }
+      const submissions = await querySubmissions({ query })
+      return await reply.status(200).send(JSON.stringify(submissions));
     })
 
   routes.post(

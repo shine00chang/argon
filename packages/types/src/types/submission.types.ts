@@ -16,6 +16,7 @@ export const NewSubmissionSchema = Type.Object({
   language: Type.Enum(SubmissionLang),
   source: Type.String()
 }, { additionalProperties: false })
+
 export type NewSubmission = Static<typeof NewSubmissionSchema>
 
 const BaseSubmissionSchema = Type.Object({
@@ -60,5 +61,11 @@ const GradedSubmissionSchema = Type.Intersect([BaseSubmissionSchema, Type.Object
   }))
 })])
 
-export const SubmissionSchema = Type.Intersect([Type.Union([CompilingSubmissionSchema, GradingSubmissionSchema, GradedSubmissionSchema, CompileFailedSubmissionSchema, TerminatedSubmissionSchema])])
+export const SubmissionSchema = Type.Intersect([Type.Union([
+  CompilingSubmissionSchema, 
+  GradingSubmissionSchema,
+  GradedSubmissionSchema, 
+  CompileFailedSubmissionSchema,
+  TerminatedSubmissionSchema
+])])
 export type Submission = Static<typeof SubmissionSchema>

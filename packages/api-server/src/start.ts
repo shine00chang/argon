@@ -104,8 +104,8 @@ export async function loadFastify (testing = false): Promise<FastifyTypeBox> {
     return reply
   })
 
-  app.get('/', async function handler (_, reply) {
-    const fd = await fs.open(path.join(__dirname, '../../src/client.html'))
+  app.get('/submissions', async function handler (_, reply) {
+    const fd = await fs.open(path.join(__dirname, '../../src/submissions.html'))
     const stream = fd.createReadStream()
     reply.type('text/html').send(stream)
     return reply
