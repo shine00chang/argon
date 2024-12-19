@@ -31,7 +31,7 @@ export async function createTeam ({ newTeam, contestId, userId }: { newTeam: New
       await userCollection.updateOne({ id: userId },
         { $set: { [`teams.${contestId}`]: id } }, { session })
 
-      await teamScoreCollection.insertOne({ id, contestId, scores: {}, time: {}, lastTime: 0, totalScore: 0 })
+      await teamScoreCollection.insertOne({ id, contestId, scores: {}, penalty: {},  time: {}, totalScore: 0, totalPenalty: 0})
     })
   } finally {
     await session.endSession()

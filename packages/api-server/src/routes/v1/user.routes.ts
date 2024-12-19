@@ -7,12 +7,13 @@ import { NotFoundError, badRequestSchema, conflictSchema, forbiddenSchema, notFo
 import { completeTeamInvitation } from '../../services/team.services.js'
 import { hasDomainPrivilege } from '../../auth/scope.auth.js'
 import { isTeamMember } from '../../auth/team.auth.js'
-import { fetchContestProblem, fetchSubmission } from '@argoncs/common'
+import { fetchSubmission } from '@argoncs/common'
 import { isSuperAdmin } from '../../auth/role.auth.js'
 import { userAuthHook } from '../../hooks/authentication.hooks.js'
 import { submissionInfoHook } from '../../hooks/submission.hooks.js'
 import gravatarUrl from 'gravatar-url'
 import { querySubmissions } from '../../services/submission.services.js'
+import {fetchContestProblem} from '../../services/contest.services.js'
 
 async function userProfileRoutes (profileRoutes: FastifyTypeBox): Promise<void> {
   profileRoutes.get(

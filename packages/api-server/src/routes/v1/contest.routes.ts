@@ -12,7 +12,6 @@ import {
   TeamInvitationSchema,
   ProblemSchema
 } from '@argoncs/types'
-import { fetchContestProblem } from '@argoncs/common'
 import {
   UnauthorizedError,
   badRequestSchema,
@@ -20,7 +19,8 @@ import {
   forbiddenSchema,
   methodNotAllowedSchema,
   notFoundSchema,
-  unauthorizedSchema
+  unauthorizedSchema,
+  BadRequestError
 } from 'http-errors-enhanced'
 import {
   contestBegan,
@@ -42,7 +42,8 @@ import {
   removeProblemFromContest,
   updateContest,
   publishContest,
-  fetchPublishedContests
+  fetchPublishedContests,
+  fetchContestProblem
 } from '../../services/contest.services.js'
 import {
   createTeam,
@@ -55,12 +56,11 @@ import {
   makeTeamCaptain,
   removeTeamMember
 } from '../../services/team.services.js'
-import { isTeamCaptain, isTeamMember } from '../../auth/team.auth.js'
-import { createSubmission, querySubmissions } from '../../services/submission.services.js'
+import { isTeamCaptain } from '../../auth/team.auth.js'
+import { createSubmission, querySubmissions, rejudgeProblem } from '../../services/submission.services.js'
 import { hasVerifiedEmail } from '../../auth/email.auth.js'
 import { userAuthHook } from '../../hooks/authentication.hooks.js'
 import { contestInfoHook } from '../../hooks/contest.hooks.js'
-import { requestUserProfile } from '../../utils/auth.utils.js'
 import { fetchUser } from '../../services/user.services.js'
 import { createPolygonUploadSession } from '../../services/testcase.services.js'
 
@@ -165,9 +165,9 @@ async function contestProblemRoutes (problemRoutes: FastifyTypeBox): Promise<voi
       ]
     },
     async (request, reply) => {
-      if (request.user == null) {
-        throw new UnauthorizedError('User not logged in')
-      }
+      if (request.user == null) 
+        throw new UnauthorizedError("not logged in");
+
       const submission = request.body
       const { contestId, problemId } = request.params
       const created = await createSubmission({
@@ -178,6 +178,32 @@ async function contestProblemRoutes (problemRoutes: FastifyTypeBox): Promise<voi
         teamId: request.user.teams[contestId] ?? undefined
       })
       return await reply.status(202).send(created)
+    }
+  )
+
+  problemRoutes.post(
+    '/:problemId/rejudge',
+    {
+      schema: {
+        response: {
+          202: Type.Object({ regrades: Type.Number() }),
+          400: badRequestSchema,
+          401: unauthorizedSchema,
+          403: forbiddenSchema,
+          404: notFoundSchema
+        },
+        params: Type.Object({ problemId: Type.String() })
+      },
+      onRequest: [userAuthHook, problemRoutes.auth([
+        [hasDomainPrivilege(['contest.manage'])],
+        [hasContestPrivilege(['manage'])]
+      ])]
+    },
+    async (request, reply) => {
+      // @ts-ignore
+      const { problemId } = request.params;
+      const rejudges = await rejudgeProblem({ problemId })
+      return await reply.status(202).send({ rejudges })
     }
   )
 
