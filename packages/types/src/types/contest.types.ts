@@ -7,7 +7,6 @@ export const NewContestSchema = Type.Object({
   endTime: Type.Number(),
   teamSize: Type.Number(),
   path: Type.String(),
-  seriesId: Type.String()
 }, { additionalProperties: false })
 export type NewContest = Static<typeof NewContestSchema>
 
@@ -18,7 +17,6 @@ export const ContestSchema = Type.Object({
   endTime: Type.Number(),
   teamSize: Type.Number(),
   path: Type.String(),
-  seriesId: Type.String(),
 
   domainId: Type.String(),
   id: Type.String(),
@@ -31,17 +29,3 @@ export const ContestProblemListSchema = Type.Object({
   problems: Type.Array(Type.Object({id: Type.String(), name: Type.String()}))
 })
 export type ConetstProblemList = Static<typeof ContestProblemListSchema>
-
-export const NewContestSeriesSchema = Type.Object({
-  name: Type.String()
-})
-export type NewContestSeries = Static<typeof NewContestSeriesSchema>
-
-export const ContestSeriesSchema = Type.Object({
-  name: Type.String(),
-
-  contests: Type.Array(Type.String()),
-  id: Type.String(),
-  domainId: Type.String()
-})
-export type ContestSeries = Static<typeof ContestSeriesSchema>

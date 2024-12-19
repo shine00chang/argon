@@ -68,7 +68,4 @@ const promises = files.map(path =>
 
 Promise.all(promises)
 
-console.log('copying dev.html')
-await fs.cp(join(srcDir, 'dev.html'), join(buildDir, 'dev.html'));
-
 console.log('built.')

@@ -9,7 +9,6 @@ import {
   SubmissionSchema,
   TeamScoreSchema,
   NewContestSchema,
-  ContestSeriesSchema,
   TeamInvitationSchema,
   ProblemSchema
 } from '@argoncs/types'
@@ -37,7 +36,6 @@ import {
   hasNoPrivilege
 } from '../../auth/scope.auth.js'
 import {
-  fetchAllContestSeries,
   fetchContest,
   fetchContestProblemList,
   fetchContestRanklist,
@@ -559,7 +557,7 @@ export async function contestRoutes (routes: FastifyTypeBox): Promise<void> {
     {
       schema: {
         params: Type.Object({ contestId: Type.String() }),
-        body: Type.Omit(NewContestSchema, ['seriesId']),
+        body: NewContestSchema,
         response: {
           200: Type.Object({ modified: Type.Boolean() }),
           400: badRequestSchema,
@@ -676,19 +674,4 @@ export async function contestRoutes (routes: FastifyTypeBox): Promise<void> {
   await routes.register(contestProblemRoutes, { prefix: '/:contestId/problems' })
   await routes.register(contestTeamRoutes, { prefix: '/:contestId/teams' })
   await routes.register(contestRanklistRoutes, { prefix: '/:contestId/ranklist' })
-}
-
-export async function contestSeriesRoutes (routes: FastifyTypeBox): Promise<void> {
-  routes.get('/',
-    {
-      schema: {
-        response: {
-          200: Type.Array(ContestSeriesSchema)
-        }
-      }
-    },
-    async (request, reply) => {
-      const contestSeries = await fetchAllContestSeries()
-      return await reply.status(200).send(contestSeries)
-    })
 }

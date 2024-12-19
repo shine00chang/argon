@@ -1,5 +1,5 @@
-import { MongoServerError, contestCollection, contestProblemCollection, contestProblemListCollection, contestSeriesCollection, mongoClient, ranklistRedis, recalculateTeamTotalScore, teamScoreCollection } from '@argoncs/common'
-import { type NewContestSeries, type ConetstProblemList, type Contest, type NewContest, type TeamScore, type ContestSeries } from '@argoncs/types'
+import { MongoServerError, contestCollection, contestProblemCollection, contestProblemListCollection, mongoClient, ranklistRedis, recalculateTeamTotalScore, teamScoreCollection } from '@argoncs/common'
+import { type ConetstProblemList, type Contest, type NewContest, type TeamScore } from '@argoncs/types'
 import { ConflictError, MethodNotAllowedError, NotFoundError } from 'http-errors-enhanced'
 import { nanoid } from 'nanoid'
 import { CONTEST_CACHE_KEY, CONTEST_PATH_CACHE_KEY, PROBLEMLIST_CACHE_KEY, deleteCache, fetchCacheUntilLockAcquired, releaseLock, setCache } from '@argoncs/common'
@@ -10,10 +10,6 @@ export async function createContest ({ newContest, domainId }: { newContest: New
   const session = mongoClient.startSession()
   try {
     await session.withTransaction(async () => {
-      const { matchedCount } = await contestSeriesCollection.updateOne({ id: newContest.seriesId, domainId }, { $addToSet: { contests: id } })
-      if (matchedCount === 0) {
-        throw new NotFoundError('Contest series not found')
-      }
       await contestCollection.insertOne(contest)
       await contestProblemListCollection.insertOne({ id, problems: [] })
     })
@@ -23,28 +19,12 @@ export async function createContest ({ newContest, domainId }: { newContest: New
   return { contestId: id }
 }
 
-export async function createContestSeries ({ newContestSeries, domainId }: { newContestSeries: NewContestSeries, domainId: string }): Promise<{ seriesId: string }> {
-  const id = nanoid()
-  await contestSeriesCollection.insertOne({ ...newContestSeries, contests: [], id, domainId })
-  return { seriesId: id }
-}
-
 export async function fetchPublishedContests ({ limit }: { limit: number }): Promise<Contest[]> {
   const contests = await contestCollection.find({published: true})
     .limit(limit)
     .toArray();
 
   return contests;
-}
-
-export async function fetchAllContestSeries (): Promise<ContestSeries[]> {
-  const contestSeries = await contestSeriesCollection.find().toArray()
-  return contestSeries
-}
-
-export async function fetchDomainContestSeries ({ domainId }: { domainId: string }): Promise<ContestSeries[]> {
-  const contestSeries = await contestSeriesCollection.find({ domainId }).toArray()
-  return contestSeries
 }
 
 export async function fetchContest ({ contestId }: { contestId: string }): Promise<Contest> {
@@ -73,7 +53,7 @@ export async function fetchDomainContests ({ domainId }: { domainId: string }): 
   return contests
 }
 
-export async function updateContest ({ contestId, newContest }: { contestId: string, newContest: Partial<Omit<NewContest, 'seriesId'>> }): Promise<{ modified: boolean }> {
+export async function updateContest ({ contestId, newContest }: { contestId: string, newContest: Partial<NewContest> }): Promise<{ modified: boolean }> {
   let contest: Contest | null = null
   try {
     contest = (await contestCollection.findOneAndUpdate(

@@ -66,14 +66,6 @@
 <div id='perms-list'>
 </div>
 
-<h2>Series</h2>
-<input type="text" id="series-name" placeholder="name"><br>
-<button id='series-add'>add</button> <br>
-<button id='series-get'>get</button> <br>
-
-<div id='series-list'>
-</div>
-
 <h2>Contests</h2>
 <input type="text" id="contest-name" placeholder="name"><br>
 <input type="text" id="contest-path" placeholder="path"><br>
@@ -102,7 +94,6 @@
 
   const getDomainId = _ => {let e = document.querySelector('input[name="domain-radio"]:checked'); return e ? e.value : undefined;};
   const getProblemId = _ => {let e = document.querySelector('input[name="problem-radio"]:checked'); return e ? e.value : undefined;};
-  const getSeriesId = _ => {let e = document.querySelector('input[name="series-radio"]:checked'); return e ? e.value : undefined;};
   const getContestId = _ => {let e = document.querySelector('input[name="contest-radio"]:checked'); return e ? e.value : undefined;};
   const getTestcaseId = _ => {let e = document.querySelector('input[name="testcase-radio"]:checked'); return e ? e.value : undefined;};
 
@@ -429,55 +420,11 @@
     document.getElementById('problem-list').innerHTML = html;
   }
 
-  document.getElementById('series-add').onclick = async _ => {
-
-    console.log('series-add');
-
-    const body = {
-      name: document.getElementById('series-name').value,
-    };
-
-    if (!body.name) return alert('no series name');
-
-    const options = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    };
-
-    if (getDomainId() === undefined) return alert('no domain selected');
-
-    await betterFetch(`/v1/domains/${getDomainId()}/contest-series`, options)
-      .then(res => {
-        alert('series created');
-        document.getElementById('series-get').click();
-      })
-  }
-
-  document.getElementById('series-get').onclick = async _ => {
-
-    console.log('series-get');
-
-    if (getDomainId() === undefined) return alert('no domain selected');
-    const res = await betterFetch( `/v1/domains/${getDomainId()}/contest-series/`)
-
-    let html = '';
-    for (const { name, id, published } of res) {
-      html += `
-      <div>
-      <input type='radio' name='series-radio' value='${id}'>
-      <label for='${id}'><b>${name}</b>: (<i>${id}</i>)</label>
-      </div>`
-    }
-
-    document.getElementById('series-list').innerHTML = html;
-  }
-
   document.getElementById('contest-add').onclick = async _ => {
 
     console.log('contest-add');
 
-    if (getSeriesId() === undefined) return alert('no series selected');
+    if (getDomainId() === undefined) return alert('no domain selected');
 
     const body = {
       name: document.getElementById('contest-name').value,
@@ -486,8 +433,7 @@
 	    startTime: document.getElementById('contest-startTime').value,
 	    endTime: document.getElementById('contest-endTime').value,
 	    description: "no description",
-	    teamSize: 1,
-	    seriesId: getSeriesId()
+	    teamSize: 1
     };
 
     if (!body.name || !body.path || !body.handle || !body.startTime || !body.endTime)
