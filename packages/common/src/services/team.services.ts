@@ -8,34 +8,22 @@ export async function recalculateTeamTotalScore ({ contestId, teamId = undefined
       $match: query
     },
     {
-      $project: { v: { $objectToArray: '$scores' } }
+      $project: { 
+        s: { $objectToArray: '$scores' },
+        p: { $objectToArray: '$penalty' },
+      }
     },
     {
-      $set: { totalScore: { $sum: '$v.v' } }
+      $set: { 
+        totalScore: { $sum: '$s.v' },
+        totalPenalty: { $sum: '$p.v' }
+      }
     },
     {
-      $unset: "v"
+      $unset: ['s', 'p']
     },
     { 
       $merge: { into: "teamScores" } 
-    }
-  ]).toArray()
-
-  await teamScoreCollection.aggregate([
-    {
-      $match: query
-    },
-    {
-      $project: { v: { $objectToArray: '$time' } }
-    },
-    {
-      $set: { lastTime: { $max: '$v.v' } }
-    },
-    {
-      $unset: "v"
-    },
-    { 
-      $merge: { into: "lastTime" } 
     }
   ]).toArray()
 }

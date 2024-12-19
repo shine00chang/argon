@@ -31,7 +31,7 @@ export async function compileSubmission ({ task, boxId }: { task: CompilingTask,
       boxId
     })
 
-  console.log('compiled')
+  console.log('compiled', { result })
   if (result.status === SandboxStatus.Succeeded) {
     await minio.fPutObject('binaries', task.submissionId, binaryPath)
     return {

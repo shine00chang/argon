@@ -66,7 +66,6 @@ export async function initSandbox (
 }
 
 export async function destroySandbox ({ boxId }: { boxId: number }): Promise<{ boxId: number }> {
-  console.log('called');
   await exec(`isolate --box-id=${boxId} --cleanup --cg`)
   return { boxId }
 }

@@ -22,68 +22,72 @@ export async function startHandler (): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   await rabbitMQ.consume(judgerResultsQueue, async (message) => {
     console.log('judger result queue consumed');
-    if (message != null) {
-      try {
-        const result: CompilingCheckerResultMessage | CompilingResultMessage | GradingResultMessage = 
-          JSON.parse(message.content.toString())
+    if (message == null) 
+      return;
 
-        if (result.type === JudgerResultType.Compiling)
-          await handleCompileResult(result.result, result.submissionId)
+    try {
+      const result: CompilingCheckerResultMessage | CompilingResultMessage | GradingResultMessage = 
+        JSON.parse(message.content.toString())
 
-        else if (result.type === JudgerResultType.Grading)
-          await handleGradingResult(result.result, result.submissionId, result.testcaseIndex)
+      if (result.type === JudgerResultType.Compiling)
+        await handleCompileResult(result.result, result.submissionId)
 
-        else if (result.type === JudgerResultType.CompilingChecker)
-          await handleCompileCheckerResult(result.result, result.problemId)
+      else if (result.type === JudgerResultType.Grading)
+        await handleGradingResult(result.result, result.submissionId, result.testcaseIndex)
 
-        else 
-          throw Error('Invalid result type')
+      else if (result.type === JudgerResultType.CompilingChecker)
+        await handleCompileCheckerResult(result.result, result.problemId)
 
-        rabbitMQ.ack(message)
+      else 
+        throw Error('Invalid result type')
 
-      } catch (err) {
-        sentry.captureException(err)
-        rabbitMQ.reject(message, false)
-      }
+      rabbitMQ.ack(message)
+
+    } catch (err) {
+      console.error(err)
+      rabbitMQ.reject(message, false)
     }
   })
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   await rabbitMQ.consume(deadResultsQueue, async (message) => {
     console.log('dead results queue consumed')
-    if (message != null) {
-      try {
-        const result: CompilingCheckerResultMessage | CompilingResultMessage | GradingResultMessage =
-          JSON.parse(message.content.toString())
+    if (message == null) 
+      return;
+    try {
+      const result: CompilingCheckerResultMessage | CompilingResultMessage | GradingResultMessage =
+        JSON.parse(message.content.toString())
+      console.log({ result });
 
-        if (result.type === JudgerResultType.CompilingChecker)
-          console.log('checker compilation results failed to be processed with:\n', result.result)
-        else 
-          await completeGrading(result.submissionId, 'One or more of the grading results failed to be processed')
-        rabbitMQ.ack(message)
-      } catch (err) {
-        sentry.captureException(err)
-        rabbitMQ.reject(message, false)
-      }
+      if (result.type === JudgerResultType.CompilingChecker)
+        console.log('checker compilation results failed to be processed with:\n', result.result)
+      else 
+        await completeGrading(result.submissionId, 'One or more of the grading results failed to be processed')
+      rabbitMQ.ack(message)
+    } catch (err) {
+      console.error(err)
+      rabbitMQ.reject(message, false)
     }
   })
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   await rabbitMQ.consume(deadTasksQueue, async (message) => {
     console.log('dead tasks queue consumed')
-    if (message != null) {
-      try {
-        const task: CompilingTask | CompilingCheckerTask | GradingTask = JSON.parse(message.content.toString())
+    if (message == null) 
+      return;
 
-        if (task.type === JudgerTaskType.CompilingChecker) 
-          console.log('checker compilation task rejected');
-        else
-          await completeGrading(task.submissionId, 'One or more of the grading tasks failed to complete')
-        rabbitMQ.ack(message)
-      } catch (err) {
-        sentry.captureException(err)
-        rabbitMQ.reject(message, false)
-      }
+    try {
+      const task: CompilingTask | CompilingCheckerTask | GradingTask = JSON.parse(message.content.toString())
+      console.log({ task });
+
+      if (task.type === JudgerTaskType.CompilingChecker) 
+        console.log('checker compilation task rejected');
+      else
+        await completeGrading(task.submissionId, 'One or more of the grading tasks failed to complete')
+      rabbitMQ.ack(message)
+    } catch (err) {
+      console.error(err)
+      rabbitMQ.reject(message, false)
     }
   })
 

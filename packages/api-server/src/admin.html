@@ -84,7 +84,8 @@
 <button id='problem-replace'>replace</button> (zipped package)
 <input type="file" id="problem-input"> <br>
 <button id='problem-get'>get</button> 
-<button id='problem-delete'>delete</button>
+<button id='problem-delete'>delete</button> <br>
+<button id='problem-rejudge' style='color: red;'>REJUDGE PROBLEM</button>
 <div id='problem-list'>
 
 <script>
@@ -418,6 +419,21 @@
     }
 
     document.getElementById('problem-list').innerHTML = html;
+  }
+
+  document.getElementById('problem-rejudge').onclick = async _ => {
+    console.log('problem-rejudge');
+
+    if (getContestId() === undefined) return alert('no contest selected');
+    if (getProblemId() === undefined) return alert('no contest problem selected');
+
+    const res = prompt('Rejudging (probably) takes a long time and will clog the judging queue. To proceed, type "REJUDGE NOW"');
+    if (res !== 'REJUDGE NOW') 
+      return alert('rejudge canceled');
+
+    const { rejudges } = await betterFetch(`/v1/contests/${getContestId()}/problems/${getProblemId()}/rejudge`, { method: "POST" });
+
+    alert(`rejudging ${rejudges} submissions for problem ${getProblemId()}`);
   }
 
   document.getElementById('contest-add').onclick = async _ => {

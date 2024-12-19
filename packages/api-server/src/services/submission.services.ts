@@ -6,23 +6,25 @@ import {
   type Submission,
   type Problem
 } from '@argoncs/types' /*=*/
-import { rabbitMQ, judgerExchange, judgerTasksKey, submissionCollection, fetchContestProblem } from '@argoncs/common'
+import { rabbitMQ, judgerExchange, judgerTasksKey, submissionCollection, teamScoreCollection } from '@argoncs/common'
 import { languageConfigs } from '../../configs/language.configs.js'
 
 import { nanoid } from 'nanoid'
+import {fetchContestProblem} from './contest.services.js'
 
 export async function createSubmission (
   { submission, userId, problemId, contestId, teamId = undefined }:
   { submission: NewSubmission, userId: string, problemId: string, contestId: string, teamId?: string }): Promise<{ submissionId: string }> 
 {
-  const problem = await fetchContestProblem({ problemId })
+  // Ensure problem exists
+  await fetchContestProblem({ problemId })
 
   const submissionId = nanoid()
   let pendingSubmission: Submission = {
     ...submission,
     id: submissionId,
     status: SubmissionStatus.Compiling,
-    problemId: problem.id,
+    problemId,
     teamId,
     userId,
     contestId,
@@ -73,19 +75,60 @@ export async function querySubmissions ({ query }: { query: { problemId?: string
         ]
       }
     },
-   {
+    {
       $set: {
-         user: {$arrayElemAt:["$user",0]},
-         problem: {$arrayElemAt:["$problem",0]}
+        user: {$arrayElemAt:["$user",0]},
+        problem: {$arrayElemAt:["$problem",0]}
       }
-   },
-   {
-       $unset: [ 'userId', 'problemId' ]
-   },
+    },
+    {
+      $unset: [ 'userId', 'problemId' ]
+    },
     {
       $sort: { createdAt: -1 }
     }
   ]).toArray();
 
   return submissions;
+}
+
+// returns the number of submissions to rejudge
+export async function rejudgeProblem ({ problemId }: { problemId: string }):
+  Promise<number> 
+{
+  let rejudge = 0;
+
+  await teamScoreCollection.updateMany(
+    { [`scores.${problemId}`]: { $exists: true } },
+    { $unset: { 
+      [`scores.${problemId}`]: '',
+      [`time.${problemId}`]: '',
+      [`penalty.${problemId}`]: '',
+      'totalScore': '',
+      'totalPenalty': '',
+    }});
+
+  for await (const submission of submissionCollection.find({ problemId })) {
+    rejudge ++;
+
+    const { id, source, language } = submission;
+
+    await submissionCollection.updateOne(
+      { id }, 
+      {
+        $set: { status: SubmissionStatus.Compiling },
+        $unset: { testcases: 1, penatly: 1, score: 1 }
+      });
+
+    const task: CompilingTask = {
+      submissionId: id,
+      type: JudgerTaskType.Compiling,
+      source,
+      language,
+      constraints: languageConfigs[language].constraints
+    }
+    rabbitMQ.publish(judgerExchange, judgerTasksKey, Buffer.from(JSON.stringify(task)))
+  }
+
+  return rejudge 
 }

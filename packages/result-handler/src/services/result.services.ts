@@ -1,6 +1,6 @@
-import { contestProblemCollection, fetchContestProblem, fetchSubmission, judgerExchange, judgerTasksKey, rabbitMQ, ranklistRedis, recalculateTeamTotalScore, submissionCollection, teamScoreCollection } from '@argoncs/common'
+import { contestCollection, contestProblemCollection, fetchSubmission, judgerExchange, judgerTasksKey, rabbitMQ, ranklistRedis, recalculateTeamTotalScore, submissionCollection, teamScoreCollection } from '@argoncs/common'
 import { type CompilingResult, CompilingStatus, type GradingResult, GradingStatus, type GradingTask, JudgerTaskType, type Problem, SubmissionStatus, type CompilingCheckerResult  } from '@argoncs/types' /*=*/
-import { NotFoundError } from 'http-errors-enhanced'
+import {NotFoundError} from 'http-errors-enhanced';
 import path from 'path'
 
 export async function handleCompileResult (compileResult: CompilingResult, submissionId: string): Promise<void> {
@@ -14,6 +14,7 @@ export async function handleCompileResult (compileResult: CompilingResult, submi
 
   // Compilation failed
   if (compileResult.status !== CompilingStatus.Succeeded) {
+    console.error('compilation failed');
     await submissionCollection.updateOne({ id: submissionId }, {
       $set: {
         status: SubmissionStatus.CompileFailed,
@@ -26,14 +27,17 @@ export async function handleCompileResult (compileResult: CompilingResult, submi
 
   const { problemId } = submission
 
-  let problem: Problem = await fetchContestProblem({ problemId });
+  const problem = await contestProblemCollection.findOne({ id: problemId });
+  if (problem === null) throw new NotFoundError("problem does not exist");
 
   if (problem.testcases == null) {
+    console.error('problem does not have testcases');
     await completeGrading(submissionId, 'Problem does not have testcases');
     return
   }
 
   if (problem.checker === null || problem.checker === undefined) {
+    console.error('problem checker does not exist');
     await completeGrading(submissionId, 'Problem Checker does not exist or is not compiled');
     return
   }
@@ -78,8 +82,13 @@ export async function handleCompileResult (compileResult: CompilingResult, submi
 
 export async function completeGrading (submissionId: string, log?: string): Promise<void> {
   const submission = await fetchSubmission({ submissionId })
+  console.log(submission);
+
   const { problemId, contestId, teamId, status, createdAt } = submission;
-  const { partials } = await fetchContestProblem({ problemId })
+  const problem = await contestProblemCollection.findOne({ id: problemId });
+  const contest = await contestCollection.findOne({ id: contestId });
+  if (contest == null) throw new NotFoundError("contest does not exist")
+  if (problem == null) throw new NotFoundError("problem does not exist")
 
   // Unexpected status
   if (status !== SubmissionStatus.Compiling &&
@@ -91,6 +100,7 @@ export async function completeGrading (submissionId: string, log?: string): Prom
   // Failed on Transition from Compiling to Grading or Grading Failed
   if (submission.status === SubmissionStatus.Compiling ||
       submission.gradedCases !== submission.testcases.length) {
+    console.error('Failed on Transition from Compiling to Grading or Grading Failed, writing as terminated.');
     await submissionCollection.updateOne({ id: submissionId }, { $set: { status: SubmissionStatus.Terminated, log } })
     return;
   } 
@@ -98,33 +108,41 @@ export async function completeGrading (submissionId: string, log?: string): Prom
 
   // Calculate score
   // eslint-disable-next-line @typescript-eslint/restrict-plus-operands 
-  const passes = testcases.reduce((t, testcase) => t + (testcase.result!).status == GradingStatus.Accepted ? 1 : 0, 1);
-  const score = partials ? 
+  const passes = testcases.reduce((t, testcase) => (testcase.result!).status == GradingStatus.Accepted ? t+1 : t, 0);
+  const score = problem.partials ? 
     passes / testcases.length * 100 :
     (passes == testcases.length ? 100 : 0);
+  const was = await submissionCollection.find({ problemId, teamId, score: { $ne: 100 }, createdAt: { $lt: createdAt } }).count();
+  const penalty = score === 100 ?
+    was * 10 + (createdAt - contest.startTime) / 3600 :
+    0;
+
+  console.log({ passes, score, was, penalty })
     
   await submissionCollection.updateOne({ id: submissionId }, {
     $set: {
       score,
+      penalty,
       status: SubmissionStatus.Graded
     },
     $unset: { gradedCases: '' }
   })
 
   // Skip score update if testing submission
-  if (submission.contestId == null || submission.teamId == null) 
+  if (contestId == null || teamId == null) 
     return
 
-  const { modifiedCount } = await teamScoreCollection.updateOne({ contestId: submission.contestId, id: submission.teamId }, {
-    $max: { [`scores.${submission.problemId}`]: score }
+  const { modifiedCount } = await teamScoreCollection.updateOne({ contestId, id: teamId }, {
+    $max: { [`scores.${problemId}`]: score }
   })
 
   // Only update if score increased 
   if (modifiedCount > 0) {
-    await teamScoreCollection.updateOne({ contestId: submission.contestId, id: submission.teamId }, {
-      $max: { [`time.${submission.problemId}`]: submission.createdAt }
+    await teamScoreCollection.updateOne({ contestId, id: teamId }, {
+      $set: {
+        [`time.${problemId}`]: createdAt,
+        [`penalty.${problemId}`]: penalty } 
     })
-    const { contestId, teamId } = submission
     await recalculateTeamTotalScore({ contestId, teamId })
     await ranklistRedis.set(`${submission.contestId}-obsolete`, 1)
   }
@@ -133,27 +151,24 @@ export async function completeGrading (submissionId: string, log?: string): Prom
 export async function handleGradingResult (gradingResult: GradingResult, submissionId: string, testcaseIndex: number): Promise<void> {
   const submission = await fetchSubmission({ submissionId })
 
-  if (submission.status === SubmissionStatus.Grading) {
-    if (submission.testcases[testcaseIndex] == null) {
-      throw new NotFoundError('No testcase found at the given index')
-    }
-    submission.testcases[testcaseIndex].result = gradingResult
-    await submissionCollection.updateOne({ id: submissionId }, {
-      $set: {
-        [`testcases.${testcaseIndex}.result`]: gradingResult,
-      },
-      $inc: {
-        gradedCases: 1,
-      }
+  if (submission.status !== SubmissionStatus.Grading) 
+    return
+
+  if (submission.testcases[testcaseIndex] == null) 
+    throw new NotFoundError('No testcase found at the given index')
+
+  submission.testcases[testcaseIndex].result = gradingResult
+  await submissionCollection.updateOne(
+    { id: submissionId }, 
+    {
+      $set: { [`testcases.${testcaseIndex}.result`]: gradingResult },
+      $inc: { gradedCases: 1 }
     })
 
-    const updatedSubmission = await fetchSubmission({ submissionId })
-    if (updatedSubmission.status === SubmissionStatus.Grading) {
-      if (updatedSubmission.gradedCases === updatedSubmission.testcases.length) {
-        await completeGrading(submissionId)
-      }
-    }
-  }
+  const updatedSubmission = await fetchSubmission({ submissionId })
+  if (updatedSubmission.status === SubmissionStatus.Grading && 
+      updatedSubmission.gradedCases === updatedSubmission.testcases.length) 
+    await completeGrading(submissionId)
 }
 
 export async function handleCompileCheckerResult (result: CompilingCheckerResult, problemId: string): Promise<void> {
@@ -168,3 +183,4 @@ export async function handleCompileCheckerResult (result: CompilingCheckerResult
   console.log('checker compilation result recieved: ', checker);
   await contestProblemCollection.updateOne({ id: problemId }, { $set: { checker }});
 }
+

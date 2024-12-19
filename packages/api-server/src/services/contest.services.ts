@@ -1,5 +1,5 @@
 import { MongoServerError, contestCollection, contestProblemCollection, contestProblemListCollection, mongoClient, ranklistRedis, recalculateTeamTotalScore, teamScoreCollection } from '@argoncs/common'
-import { type ConetstProblemList, type Contest, type NewContest, type TeamScore } from '@argoncs/types'
+import { Problem, type ConetstProblemList, type Contest, type NewContest, type TeamScore } from '@argoncs/types'
 import { ConflictError, MethodNotAllowedError, NotFoundError } from 'http-errors-enhanced'
 import { nanoid } from 'nanoid'
 import { CONTEST_CACHE_KEY, CONTEST_PATH_CACHE_KEY, PROBLEMLIST_CACHE_KEY, deleteCache, fetchCacheUntilLockAcquired, releaseLock, setCache } from '@argoncs/common'
@@ -22,7 +22,7 @@ export async function createContest ({ newContest, domainId }: { newContest: New
 export async function fetchPublishedContests ({ limit }: { limit: number }): Promise<Contest[]> {
   const contests = await contestCollection.find({published: true})
     .limit(limit)
-    .toArray();
+    .toArray()
 
   return contests;
 }
@@ -97,6 +97,14 @@ export async function publishContest ({ contestId, published }: { contestId: str
   await deleteCache({ key: `${CONTEST_CACHE_KEY}:${contest.id}` })
 }
 
+export async function fetchContestProblem ({ problemId }: { problemId: string }): Promise<Problem> {
+  const problem = await contestProblemCollection.findOne({ id: problemId })
+  if (problem == null) {
+    throw new NotFoundError('Problem not found')
+  }
+  return problem
+}
+
 export async function fetchContestProblemList ({ contestId }: { contestId: string }): Promise<ConetstProblemList> {
   const cache = await fetchCacheUntilLockAcquired<ConetstProblemList>({ key: `${PROBLEMLIST_CACHE_KEY}:${contestId}` })
   if (cache != null) {
@@ -156,12 +164,37 @@ export async function removeProblemFromContest ({ contestId, problemId }: { cont
  *   - During this time, other servers will use the obsolete ranklist.
  * - By setting TTL to 1 year, ensures persistence of the data while giving us a way to measure the record's lifetime
  */
-export async function fetchContestRanklist ({ contestId }: { contestId: string }): Promise<TeamScore[]> {
+export async function fetchContestRanklist ({ contestId }: { contestId: string }): Promise<any[]> {
   const cache = await ranklistRedis.get(contestId)
   if (cache == null ||
     (31536000 * 1000 - (await ranklistRedis.pttl(contestId)) > 1000 &&
     (await ranklistRedis.getdel(`${contestId}-obsolete`)) != null)) {
-    const ranklist = await teamScoreCollection.find({ contestId }).sort({ totalScore: -1, lastTime: 1 }).toArray()
+
+    const ranklist = await teamScoreCollection.aggregate([
+      {
+        $lookup: {
+          from: 'teams',
+          localField: 'id',
+          foreignField: 'id',
+          as: 'team',
+          pipeline: [
+            { $project: { name: 1, id: 1 } }
+          ]
+        }
+      },
+      {
+        $set: {
+          team: {$arrayElemAt:["$team",0]},
+        }
+      },
+      {
+        $unset: [ 'id' ]
+      },
+      {
+        $sort: { totalScore: 1, totalPenalty: -1 }
+      }
+    ]).toArray();
+
     await ranklistRedis.set(contestId, JSON.stringify(ranklist))
     await ranklistRedis.expire(contestId, 31536000) // One year
     return ranklist

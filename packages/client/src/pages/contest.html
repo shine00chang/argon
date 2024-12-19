@@ -92,6 +92,7 @@
           <th>rank</th>
           <th>name</th>
           <th>score</th>
+          <th>penalty</th>
 
           <!-- problem column template -->
           <template>
@@ -106,6 +107,7 @@
           <td id='rank' class='font-bold'></td>
           <td id='name' class='font-bold'></td>
           <td id='score' class='font-bold'></td>
+          <td id='penalty'></td>
           <template id='problem-score-template'>
             <td>
               <span id='status'></span>
@@ -356,12 +358,13 @@ const setup = async _ => {
     }
 
     // ranklist table body
-    for (const [rank, { name, id, totalScore: score, scores }] of ranklist.entries()) {
+    for (const [rank, { team, id, totalScore: score, totalPenalty: penalty, scores }] of ranklist.entries()) {
       const e = document.querySelector('#ranklist-row-template').content.cloneNode(true);
 
       e.querySelector('#rank').innerText = rank;
-      e.querySelector('#name').innerText = name;
+      e.querySelector('#name').innerText = team.name;
       e.querySelector('#score').innerText = score.toFixed(2);
+      e.querySelector('#penalty').innerText = penalty.toFixed(2);
 
       // problem status
       for (const problem of problems) {
@@ -458,7 +461,7 @@ const setup = async _ => {
         b.querySelector('#id').innerText = id;
         b.querySelector('#author').innerText = user.name;
         b.querySelector('#date').innerText = (new Date(createdAt)).toLocaleString();
-        b.querySelector('#problem').innerText = problems.name;
+        b.querySelector('#problem').innerText = problem.name;
         b.querySelector('#status').innerText = status; 
         b.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
         b.querySelector('#log pre').innerText = log ?? '';
