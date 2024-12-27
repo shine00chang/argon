@@ -126,6 +126,16 @@ const getSession = async _ =>
   document.getElementById('nav-username').innerText = g_user.username + '|' + g_user.email;
 }
 
+const checkHeartbeat = async _ => {
+  await betterFetch(`/v1/heartbeat`, {}, { failable: true })
+    .then(_ => console.log('Server heartbeat received. OK'))
+    .catch(_ => { 
+      console.error('Server heartbeat not received. NG. Aborting')
+      throw new Error('server offline');
+    });
+}
+
+
 document.getElementById('nav-logout').onclick = async _ => {
 
   await betterFetch(`/v1/current-session`, { method: 'DELETE' })
@@ -139,6 +149,12 @@ const awaitNavBar = fn => {
 }
 
 const fn = async _ => {
+  try {
+    await checkHeartbeat()
+  } catch (e) {
+    document.querySelector('#notice-noserver').classList.remove('hidden');
+  }
+
   await getSession()
 
   for (const fn of afterNavBar) 
@@ -150,6 +166,7 @@ fn();
 
 
   <div class='max-w-screen-md h-full m-auto mt-12'>
+    <div id='notice-noserver' class='hidden text-red-500'>Server offline</div>
     <content/>
   </div>
 

@@ -82,8 +82,6 @@ export async function handleCompileResult (compileResult: CompilingResult, submi
 
 export async function completeGrading (submissionId: string, log?: string): Promise<void> {
   const submission = await fetchSubmission({ submissionId })
-  console.log(submission);
-
   const { problemId, contestId, teamId, status, createdAt } = submission;
   const problem = await contestProblemCollection.findOne({ id: problemId });
   const contest = await contestCollection.findOne({ id: contestId });
@@ -98,31 +96,43 @@ export async function completeGrading (submissionId: string, log?: string): Prom
   }
 
   // Failed on Transition from Compiling to Grading or Grading Failed
-  if (submission.status === SubmissionStatus.Compiling ||
+  if (status === SubmissionStatus.Compiling ||
       submission.gradedCases !== submission.testcases.length) {
     console.error('Failed on Transition from Compiling to Grading or Grading Failed, writing as terminated.');
     await submissionCollection.updateOne({ id: submissionId }, { $set: { status: SubmissionStatus.Terminated, log } })
     return;
   } 
+
+  // There shouldn't be a log from not the cases above. Bad design.
+  if (log != null) {
+    console.error('completeGrading recieved log but not in expected cases.');
+    await submissionCollection.updateOne({ id: submissionId }, { $set: { status: SubmissionStatus.Terminated, log } })
+    return;
+  }
+
   const testcases = submission.testcases;
 
   // Calculate score
   // eslint-disable-next-line @typescript-eslint/restrict-plus-operands 
   const passes = testcases.reduce((t, testcase) => (testcase.result!).status == GradingStatus.Accepted ? t+1 : t, 0);
+  const passed = passes == testcases.length;
   const score = problem.partials ? 
     passes / testcases.length * 100 :
-    (passes == testcases.length ? 100 : 0);
+    (passed ? 100 : 0);
   const was = await submissionCollection.find({ problemId, teamId, score: { $ne: 100 }, createdAt: { $lt: createdAt } }).count();
-  const penalty = score === 100 ?
-    was * 10 + (createdAt - contest.startTime) / 3600 :
-    0;
+  const penalty = passed ?
+    was * 10 + (createdAt - contest.startTime) / 3600 : 0;
+   log = passed ?
+    `AC, passed ${passes} cases` :
+    `WA, passed ${passes}/${testcases.length} cases`;
 
-  console.log({ passes, score, was, penalty })
+  console.log({ passes, score, was, penalty, log })
     
   await submissionCollection.updateOne({ id: submissionId }, {
     $set: {
       score,
       penalty,
+      log,
       status: SubmissionStatus.Graded
     },
     $unset: { gradedCases: '' }
@@ -175,7 +185,7 @@ export async function handleCompileCheckerResult (result: CompilingCheckerResult
 
   if (result.status == CompilingStatus.Failed) {
     // TODO: warn of broken checker
-    console.log('checker compilation failed')
+    console.error('checker compilation failed')
     return
   }
 

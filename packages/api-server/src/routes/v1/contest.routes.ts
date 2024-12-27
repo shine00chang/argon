@@ -621,23 +621,17 @@ export async function contestRoutes (routes: FastifyTypeBox): Promise<void> {
     },
     async (request, reply) => {
       
-      if (request.user == null) {
-        throw new UnauthorizedError('User not logged in')
-      }
+      if (request.user == null) throw new UnauthorizedError('User not logged in')
 
       const { contestId } = request.params
+      const contestRunning = await fetchContest({ contestId })
+        .then(contest => contest.startTime < Date.now() && contest.endTime > Date.now());
+      const tester = request.user.teams[contestId] == undefined;
+      const submissions = tester ?
+        await querySubmissions({ query: { contestId, userId: request.user.id } }) :
+        await querySubmissions({ query: { contestId, teamId: request.user.teams[contestId] }, notestcases: contestRunning })
       
-      // query for participant
-      let query: any = { contestId, teamId: request.user.teams[contestId] }
-
-      // query for testers
-      if (query.teamId == undefined) 
-        query = { contestId, userId: request.user.id };
-      
-      console.log(query);
-
-      const submissions = await querySubmissions({ query })
-      console.log(submissions);
+      console.log('submissions queried: ', submissions.length);
       return await reply.status(200).send(JSON.stringify(submissions))
     })
 

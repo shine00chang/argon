@@ -48,7 +48,9 @@ export async function createSubmission (
   return { submissionId }
 }
 
-export async function querySubmissions ({ query }: { query: { problemId?: string, teamId?: string, userId?: string, contestId?: string } }):
+export async function querySubmissions (
+  { query, notestcases = false }:
+  { query: { problemId?: string, teamId?: string, userId?: string, contestId?: string }, notestcases?: boolean }):
   Promise<any> 
 {
   const submissions = await submissionCollection.aggregate([
@@ -78,7 +80,8 @@ export async function querySubmissions ({ query }: { query: { problemId?: string
     {
       $set: {
         user: {$arrayElemAt:["$user",0]},
-        problem: {$arrayElemAt:["$problem",0]}
+        problem: {$arrayElemAt:["$problem",0]},
+        ...(notestcases ? { testcases: [] } : {})
       }
     },
     {

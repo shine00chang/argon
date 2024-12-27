@@ -55,6 +55,7 @@ const TerminatedSubmissionSchema = Type.Intersect([BaseSubmissionSchema, Type.Ob
 
 const GradedSubmissionSchema = Type.Intersect([BaseSubmissionSchema, Type.Object({
   status: Type.Literal(SubmissionStatus.Graded),
+  log: Type.Optional(Type.String()),
   score: Type.Number(),
   penalty: Type.Number(),
   testcases: Type.Array(Type.Object({

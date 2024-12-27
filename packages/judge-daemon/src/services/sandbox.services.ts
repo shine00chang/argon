@@ -130,7 +130,7 @@ export async function runInSandbox ({ task, boxId }: { task: SandboxTask, boxId:
     console.log('execution passed')
   } catch (err) {
     try {
-      console.log('execution failed', err)
+      console.log('execution failed')
       const meta = (await fs.readFile(metaPath(boxId))).toString()
       const result = parseMeta(meta)
 
