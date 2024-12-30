@@ -55,42 +55,33 @@ export async function querySubmissions (
 {
   const submissions = await submissionCollection.aggregate([
     { $match: query },
-    {
-      $lookup: {
-        from: 'users',
-        localField: 'userId',
-        foreignField: 'id',
-        as: 'user',
-        pipeline: [
-          { $project: { username: 1, name: 1, id: 1 } }
-        ]
-      }
-    },
-    {
-      $lookup: {
-        from: 'contestProblems',
-        localField: 'problemId',
-        foreignField: 'id',
-        as: 'problem',
-        pipeline: [
-          { $project: { name: 1, id: 1 } }
-        ]
-      }
-    },
-    {
-      $set: {
-        user: {$arrayElemAt:["$user",0]},
-        problem: {$arrayElemAt:["$problem",0]},
-        ...(notestcases ? { testcases: [] } : {})
-      }
-    },
-    {
-      $unset: [ 'userId', 'problemId' ]
-    },
-    {
-      $sort: { createdAt: -1 }
-    }
-  ]).toArray();
+    { $lookup: {
+      from: 'users',
+      localField: 'userId',
+      foreignField: 'id',
+      as: 'user',
+      pipeline: [
+        { $project: { _id: 0, username: 1, name: 1, id: 1 } }
+      ]
+    }},
+    { $lookup: {
+      from: 'contestProblems',
+      localField: 'problemId',
+      foreignField: 'id',
+      as: 'problem',
+      pipeline: [
+        { $project: { _id: 0, name: 1, id: 1 } }
+      ]
+    }},
+    { $set: {
+      user: {$arrayElemAt:["$user",0]},
+      problem: {$arrayElemAt:["$problem",0]},
+      ...(notestcases ? { testcases: [] } : {})
+    }},
+    { $unset: [ 'userId', 'problemId' ] },
+    { $sort: { createdAt: -1 } }
+  ])
+    .toArray();
 
   return submissions;
 }

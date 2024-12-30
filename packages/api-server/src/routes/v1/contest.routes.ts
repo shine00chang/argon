@@ -43,7 +43,8 @@ import {
   updateContest,
   publishContest,
   fetchPublishedContests,
-  fetchContestProblem
+  fetchContestProblem,
+  fetchContestParticipants
 } from '../../services/contest.services.js'
 import {
   createTeam,
@@ -662,6 +663,34 @@ export async function contestRoutes (routes: FastifyTypeBox): Promise<void> {
       const query = { contestId }
       const submissions = await querySubmissions({ query })
       return await reply.status(200).send(JSON.stringify(submissions));
+    })
+
+  routes.get(
+    '/:contestId/all-participants',
+    {
+      schema: {
+        params: Type.Object({ contestId: Type.String() }),
+        response: {
+          200: Type.Any(),
+          400: badRequestSchema,
+          401: unauthorizedSchema,
+          403: forbiddenSchema,
+          404: notFoundSchema
+        }
+      },
+      onRequest: [contestInfoHook, userAuthHook, routes.auth([
+        [hasDomainPrivilege(['contest.manage'])],
+        [hasContestPrivilege(['manage'])]
+      ]) as any]
+    },
+    async (request, reply) => {
+      if (request.user == null) {
+        throw new UnauthorizedError('User not logged in')
+      }
+
+      const { contestId } = request.params
+      const users = await fetchContestParticipants({ contestId })
+      return await reply.status(200).send(JSON.stringify(users));
     })
 
   routes.post(

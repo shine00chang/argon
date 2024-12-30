@@ -1,6 +1,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.36.5/ace.min.js" integrity="sha512-NIDAOLuPuewIzUrGoK5fXxowwGDm0DFJhI5TJPyTP6MeY2hUcCSKJr54fecQTEZ8kxxEO2NBrILQSUl4qZ37FA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-<h1>Argon Admin: Submissions Viewer</h1>
+<h1>Argon Admin: Contest Viewer</h1>
 
 <input type="text" id="username" placeholder="username" value="shine"> <br>
 <input type="text" id="password" placeholder="password" value="12345678"> <br>
@@ -16,6 +16,50 @@
 <h2>Contests</h2>
 <button id='contest-get'>get</button>
 <div id='contest-list'></div>
+
+<h2>Participants</h2>
+<button id='participants-print'>get (print in console)</button>
+<button id='participants-download'>get (JSON download)</button>
+
+<h2>Ranking</h2>
+<button id='ranklist-get'>get</button>
+<button id='ranklist-download'>JSON download</button>
+
+<div id='ranklist-box' class='hidden'>
+  <div id='ranklist-list'>
+    <table>
+      <thead>
+        <th>rank</th>
+        <th>name</th>
+        <th>score</th>
+        <th>penalty</th>
+
+        <!-- problem column template -->
+        <template>
+        <th class='templated'><span id='name'></span></th>
+        </template>
+      </thead>
+      <tbody></tbody>
+
+      <!-- Ranklist row template -->
+      <template id='ranklist-row-template'>
+      <tr id='row'>
+        <td id='rank'></td>
+        <td id='name'></td>
+        <td id='score'></td>
+        <td id='penalty'></td>
+        <template id='problem-score-template'>
+          <td>
+            <span id='status'></span>
+          </td>
+        </template>
+      </tr>
+      </template>
+    </table>
+  </div>
+</div>
+
+
 
 <h2>Submissions</h2>
 <button id='submission-get'>get</button>
@@ -162,6 +206,88 @@ document.getElementById('contest-get').onclick = async _ => {
   }
 
   document.getElementById('contest-list').innerHTML = html;
+}
+
+document.getElementById('participants-print').onclick = async _ => {
+
+  console.log('participants-print');
+
+  if (getContestId() === undefined) return alert('no contest selected');
+
+  const res = await betterFetch(`/v1/contests/${getContestId()}/all-participants`)
+    .then(res => res.json());
+  console.log(res);
+}
+
+document.getElementById('participants-download').onclick = async _ => {
+
+  console.log('participants-download');
+
+  if (getContestId() === undefined) return alert('no contest selected');
+
+  const a = document.createElement('a')
+  a.href = `/v1/contests/${getContestId()}/all-participants`;
+  a.download = 'participants.json'; 
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+document.getElementById('ranklist-get').onclick = async _ => {
+  
+  console.log('ranklist-get');
+
+  if (getContestId() === undefined) return alert('no contest selected');
+
+  document.querySelector('#ranklist-box tbody').innerHTML = '';
+  document.querySelectorAll('#ranklist-box .templated').forEach(e => e.remove());
+
+  const { ranklist, problems } = 
+    await betterFetch(`/v1/contests/${getContestId()}/ranklist`);
+
+  // ranklist table header
+  for (const problem of problems) {
+    const e = document.querySelector('#ranklist-box thead template').content.cloneNode(true);
+
+    e.querySelector('#name').innerText = problem.name;
+
+    document.querySelector('#ranklist-box thead tr').appendChild(e);
+  }
+
+  // ranklist table body
+  for (const [rank, { name, id, totalScore: score, totalPenalty: penalty, scores }] of ranklist.entries()) {
+    const e = document.querySelector('#ranklist-row-template').content.cloneNode(true);
+
+    e.querySelector('#rank').innerText = rank+1;
+    e.querySelector('#name').innerText = name;
+    e.querySelector('#score').innerText = score.toFixed(2);
+    e.querySelector('#penalty').innerText = penalty.toFixed(2);
+
+    // problem status
+    for (const problem of problems) {
+      const q = e.querySelector('template').content.cloneNode(true);
+      q.querySelector('td').id = problem.id 
+      q.querySelector('#status').innerText = scores[problem.id] !== undefined ? scores[problem.id].toFixed(2) : '-';
+
+      e.querySelector('tr').appendChild(q);
+    }
+
+    document.querySelector('#ranklist-box tbody').appendChild(e)
+  }
+}
+
+document.getElementById('ranklist-download').onclick = async _ => {
+
+  console.log('ranklist-download');
+
+  if (getContestId() === undefined) return alert('no contest selected');
+
+  const a = document.createElement('a')
+  a.href = `/v1/contests/${getContestId()}/ranklist`;
+  a.download = 'ranklist.json'; 
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 document.getElementById('submission-get').onclick = async _ => {
