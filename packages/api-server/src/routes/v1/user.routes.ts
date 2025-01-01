@@ -1,6 +1,6 @@
 import { Type } from '@sinclair/typebox'
 import { type UserPublicProfile, UserPublicProfileSchema, NewUserSchema, UserPrivateProfileSchema, SubmissionSchema, TeamInvitationSchema } from '@argoncs/types' /*=*/
-import { completeVerification, emailExists, fetchUser, initiateVerification, registerUser, queryUsers, userIdExists, usernameExists, fetchUserInvitations } from '../../services/user.services.js'
+import { emailExists, fetchUser, registerUser, queryUsers, userIdExists, usernameExists, fetchUserInvitations } from '../../services/user.services.js'
 import { ownsResource } from '../../auth/ownership.auth.js'
 import { type FastifyTypeBox } from '../../types.js' /*=*/
 import { NotFoundError, badRequestSchema, conflictSchema, forbiddenSchema, notFoundSchema, unauthorizedSchema } from 'http-errors-enhanced'
@@ -31,8 +31,7 @@ async function userProfileRoutes (profileRoutes: FastifyTypeBox): Promise<void> 
     async (request, reply) => {
       const { userId } = request.params
       const { username, name, id, email } = await fetchUser({ userId })
-      const gravatar = email != null ? gravatarUrl(email) : undefined
-      const publicProfile: UserPublicProfile = { username, name, id, gravatar }
+      const publicProfile: UserPublicProfile = { username, name, id }
       await reply.status(200).send(publicProfile)
     }
   )
@@ -56,58 +55,8 @@ async function userProfileRoutes (profileRoutes: FastifyTypeBox): Promise<void> 
     },
     async (request, reply) => {
       const { userId } = request.params
-      const { username, name, email, newEmail, scopes, role, teams, year, school, country, region, id } = await fetchUser({ userId })
-      const gravatar = email != null ? gravatarUrl(email) : undefined
-      return await reply.status(200).send({ id, username, name, email, newEmail, scopes, role, teams, year, school, country, region, gravatar })
-    }
-  )
-}
-
-async function userVerificationRoutes (verificationRoutes: FastifyTypeBox): Promise<void> {
-  verificationRoutes.post(
-    '/',
-    {
-      schema: {
-        params: Type.Object({ userId: Type.String() }),
-        response: {
-          400: badRequestSchema,
-          401: unauthorizedSchema,
-          403: forbiddenSchema
-        }
-      },
-      onRequest: [userAuthHook, verificationRoutes.auth([
-        [ownsResource]
-      ]) as any]
-    },
-    async (request, reply) => {
-      const { userId } = request.params
-      await initiateVerification({ userId })
-      return await reply.status(204).send()
-    }
-  )
-
-  verificationRoutes.post(
-    '/:verificationId',
-    {
-      schema: {
-        params: Type.Object({
-          verificationId: Type.String()
-        }),
-        response: {
-          200: Type.Object({ modified: Type.Boolean() }),
-          400: badRequestSchema,
-          401: unauthorizedSchema,
-          403: notFoundSchema
-        }
-      },
-      onRequest: [userAuthHook, verificationRoutes.auth([
-        [ownsResource]
-      ]) as any]
-    },
-    async (request, reply) => {
-      const { verificationId } = request.params
-      const { modified } = await completeVerification({ verificationId })
-      return await reply.status(200).send({ modified })
+      const { username, name, email, scopes, role, teams, year, id } = await fetchUser({ userId })
+      return await reply.status(200).send({ id, username, name, email, scopes, role, teams, year })
     }
   )
 }
@@ -308,7 +257,6 @@ export async function userRoutes (routes: FastifyTypeBox): Promise<void> {
 
 
   await routes.register(userProfileRoutes, { prefix: '/:userId/profiles' })
-  await routes.register(userVerificationRoutes, { prefix: '/:userId/email-verifications' })
   await routes.register(userSubmissionRoutes, { prefix: '/:userId/submissions' })
   await routes.register(userInviteRoutes, { prefix: '/:userId/invitations' })
 }

@@ -330,17 +330,6 @@
     document.getElementById('perms-list').innerHTML = html;
   }
 
-  document.getElementById('problem-delete').onclick = async _ => {
-
-    console.log('problem-delete');
-
-    if (getContestId() === undefined) return alert('no domain selected');
-    if (getProblemId() === undefined) return alert('no problem selected');
-
-    await betterFetch(`/v1/contests/${getContestId()}/problems/${getProblemId()}`, { method: 'DELETE' })
-      .then(_ => alert('problem deleted'))
-  }
-
   document.getElementById('problem-add').onclick = async _ => {
 
     console.log('problem-add');
@@ -487,6 +476,16 @@
     }
 
     document.getElementById('contest-list').innerHTML = html;
+  }
+
+  document.getElementById('contest-delete').onclick = async _ => {
+
+    console.log('contest-delete');
+
+    if (getContestId() === undefined) return alert('no contest selected');
+
+    await betterFetch(`/v1/contests/${getContestId()}`, { method: 'DELETE' })
+      .then(_ => alert('problem removed from contest'))
   }
 
   document.getElementById('contest-publish').onclick = async _ => {
