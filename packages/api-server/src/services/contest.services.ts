@@ -1,4 +1,4 @@
-import { MongoServerError, contestCollection, contestProblemCollection, contestProblemListCollection, mongoClient, ranklistRedis, recalculateTeamTotalScore, teamScoreCollection, teamCollection } from '@argoncs/common'
+import { MongoServerError, contestCollection, contestProblemCollection, contestProblemListCollection, mongoClient, ranklistRedis, recalculateTeamTotalScore, teamScoreCollection, teamCollection, submissionCollection } from '@argoncs/common'
 import { Problem, type ConetstProblemList, type Contest, type NewContest, type TeamScore } from '@argoncs/types' /*=*/
 import { ConflictError, MethodNotAllowedError, NotFoundError } from 'http-errors-enhanced'
 import { nanoid } from 'nanoid'
@@ -21,6 +21,27 @@ export async function createContest (
     await session.endSession()
   }
   return { contestId: id }
+}
+
+export async function deleteContest ({ contestId }: { contestId: string }): Promise<{ modified: boolean }> {
+
+  const contest = await fetchContest({ contestId });
+  if (contest == null) {
+    throw new NotFoundError('Contest not found')
+  }
+
+  await contestCollection.deleteOne({ id: contestId });
+  await contestProblemCollection.deleteMany({ contestId });
+  await contestProblemListCollection.deleteOne({ contestId });
+  await teamScoreCollection.deleteMany({ contestId });
+  await teamCollection.deleteMany({ contestId });
+  await teamCollection.deleteMany({ contestId });
+  await submissionCollection.deleteMany({ contestId });
+
+  await deleteCache({ key: `${CONTEST_CACHE_KEY}:${contestId}` });
+  await deleteCache({ key: `${PROBLEMLIST_CACHE_KEY}:${contestId}` });
+
+  return { modified: true };
 }
 
 export async function fetchPublishedContests ({ limit }: { limit: number }): Promise<Contest[]> {

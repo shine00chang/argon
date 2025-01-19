@@ -1,5 +1,4 @@
-<head>
-  <script>
+<head>  <script>
     window.MathJax = {
       tex: {
         loader: {load: ['[tex]/textmacros']},
@@ -68,12 +67,14 @@
 
 <h2>Contests</h2>
 <input type="text" id="contest-name" placeholder="name"><br>
-<input type="text" id="contest-path" placeholder="path"><br>
-<input type="number" id="contest-startTime" placeholder="startTime"><br>
-<input type="number" id="contest-endTime" placeholder="endTime"><br>
+<textarea id="contest-description">no description</textarea><br>
+Start Time (local): 
+<input type="datetime-local" id="contest-startTime" value="2025-01-15T08:30"><br>
+End Time (local):
+<input type="datetime-local" id="contest-endTime" value="2025-01-15T10:30"><br>
 <button id='contest-add'>add</button> <br>
 <button id='contest-get'>get</button> 
-<button id='contest-delete'>delete</button> <br>
+<button id='contest-delete' style='color: red;'>delete</button> <br>
 <button id='contest-publish'>publish</button>
 
 <div id='contest-list'>
@@ -84,7 +85,7 @@
 <button id='problem-replace'>replace</button> (zipped package)
 <input type="file" id="problem-input"> <br>
 <button id='problem-get'>get</button> 
-<button id='problem-delete'>delete</button> <br>
+<button id='problem-delete' style='color: red;'>delete</button> <br>
 <button id='problem-rejudge' style='color: red;'>REJUDGE PROBLEM</button>
 <div id='problem-list'>
 
@@ -433,11 +434,11 @@
 
     const body = {
       name: document.getElementById('contest-name').value,
-	    path: document.getElementById('contest-path').value,
-	    handle: document.getElementById('contest-path').value,
-	    startTime: document.getElementById('contest-startTime').value,
-	    endTime: document.getElementById('contest-endTime').value,
-	    description: "no description",
+	    path: document.getElementById('contest-name').value,
+	    handle: document.getElementById('contest-name').value,
+	    description: document.getElementById('contest-description').value,
+	    startTime: Date.parse(document.getElementById('contest-startTime').value),
+	    endTime: Date.parse(document.getElementById('contest-endTime').value),
 	    teamSize: 1
     };
 
@@ -485,7 +486,7 @@
     if (getContestId() === undefined) return alert('no contest selected');
 
     await betterFetch(`/v1/contests/${getContestId()}`, { method: 'DELETE' })
-      .then(_ => alert('problem removed from contest'))
+      .then(_ => alert('deleted contest'));
   }
 
   document.getElementById('contest-publish').onclick = async _ => {

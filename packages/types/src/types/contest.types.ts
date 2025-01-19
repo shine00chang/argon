@@ -3,6 +3,7 @@ import { type Static, Type } from '@sinclair/typebox'
 export const NewContestSchema = Type.Object({
   name: Type.String(),
   description: Type.String(),
+  logistics: Type.String(),
   startTime: Type.Number(),
   endTime: Type.Number(),
   teamSize: Type.Number(),
@@ -13,6 +14,7 @@ export type NewContest = Static<typeof NewContestSchema>
 export const ContestSchema = Type.Object({
   name: Type.String(),
   description: Type.String(),
+  logistics: Type.String(),
   startTime: Type.Number(),
   endTime: Type.Number(),
   teamSize: Type.Number(),

@@ -39,6 +39,7 @@ import {
   fetchContest,
   fetchContestProblemList,
   fetchContestRanklist,
+  deleteContest,
   removeProblemFromContest,
   updateContest,
   publishContest,
@@ -597,6 +598,30 @@ export async function contestRoutes (routes: FastifyTypeBox): Promise<void> {
       const { contestId } = request.params
       const newContest = request.body
       const status = await updateContest({ contestId, newContest })
+      return await reply.status(200).send(status)
+    })
+
+  routes.delete(
+    '/:contestId',
+    {
+      schema: {
+        params: Type.Object({ contestId: Type.String() }),
+        response: {
+          200: Type.Object({ modified: Type.Boolean() }),
+          400: badRequestSchema,
+          401: unauthorizedSchema,
+          403: forbiddenSchema,
+          404: notFoundSchema
+        }
+      },
+      onRequest: [contestInfoHook, userAuthHook, routes.auth([
+        [hasDomainPrivilege(['contest.manage'])],
+        [hasContestPrivilege(['manage'])]
+      ]) as any]
+    },
+    async (request, reply) => {
+      const { contestId } = request.params
+      const status = await deleteContest({ contestId })
       return await reply.status(200).send(status)
     })
 
