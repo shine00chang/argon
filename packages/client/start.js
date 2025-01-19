@@ -28,7 +28,7 @@ fastify.get('/:page', async function handler (request, reply) {
     const stream = fd.createReadStream()
     reply.type('text/html').send(stream)
   } catch (e) {
-    reply.redirect('/contests', 303)
+    reply.redirect('/home', 303)
   }
   return reply
 })

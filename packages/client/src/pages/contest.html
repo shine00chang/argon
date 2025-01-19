@@ -27,6 +27,9 @@
   <div id='home-box'>
     <h1 class='contest-name'></h1>
     <p class='contest-desc'></p>
+    
+    <h3>Logistics</h3>
+    <p class='contest-logs'></p>
   </div>
 
   <!-- submission box -->
@@ -333,6 +336,7 @@ const setup = async _ => {
   // === home-box ===
   document.querySelectorAll('.contest-name').forEach(e => e.innerText = contest.name)
   document.querySelectorAll('.contest-desc').forEach(e => e.innerText = contest.description)
+  document.querySelectorAll('.contest-logs').forEach(e => e.innerText = contest.logistics)
 
 
   // === ranklist box ===

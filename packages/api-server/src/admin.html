@@ -68,6 +68,7 @@
 <h2>Contests</h2>
 <input type="text" id="contest-name" placeholder="name"><br>
 <textarea id="contest-description">no description</textarea><br>
+<textarea id="contest-logistics">no rules</textarea><br>
 Start Time (local): 
 <input type="datetime-local" id="contest-startTime" value="2025-01-15T08:30"><br>
 End Time (local):
@@ -437,6 +438,7 @@ End Time (local):
 	    path: document.getElementById('contest-name').value,
 	    handle: document.getElementById('contest-name').value,
 	    description: document.getElementById('contest-description').value,
+	    logistics: document.getElementById('contest-logistics').value,
 	    startTime: Date.parse(document.getElementById('contest-startTime').value),
 	    endTime: Date.parse(document.getElementById('contest-endTime').value),
 	    teamSize: 1
