@@ -18,7 +18,11 @@
   </div>
 
   <hr>
-  <button id='nav-announcement' disabled>Announcements</button>
+
+  <div>
+    timer:<br>
+    <span id='timer' class='font-bold text-xl'></span>
+  </div>
 </div>
 
 <div id='box' class='pl-6 pb-10 w-3/4'>
@@ -121,30 +125,6 @@
       </table>
     </div>
   </div>
-
-  <!-- announcement -->
-  <div id='announcement-box' class='hidden'>
-    <h1>Announcements</h1>
-    <table class='table-fixed w-full'>
-      <thead>
-        <th>date</th>
-        <th>problem</th>
-        <th>note</th>
-      </thead>
-      <tbody>
-      </tbody>
-
-      <template>
-        <tr>
-          <td id="date"></td>
-          <td id="problem"></td>
-          <td id="note"></td>
-        </tr>
-      </template>
-    </table>
-    <div id='announcement-none-notice' class='w-full text-center italic'>no announcements yet</div>
-  </div>
-
 </div>
 
 
@@ -195,10 +175,10 @@
 
 // Create problem box with problem id in element id
 // hidden in the box
-const makeProblemElement = async (contestId, problemId) => 
+const makeProblemElement = async (contest, problemId, submission) => 
 {
   const { name, context, note, constraints, inputFormat, outputFormat, samples } =
-    await betterFetch(`/v1/contests/${contestId}/problems/${problemId}`);
+    await betterFetch(`/v1/contests/${contest.id}/problems/${problemId}`);
 
   const format = s => 
     s
@@ -234,50 +214,54 @@ const makeProblemElement = async (contestId, problemId) =>
   }
 
   // if not logged in, no submit
-  if (g_user === undefined)
-    e.querySelectorAll('.submission').forEach(e => e.classList.add('hidden'))
-
-  // submission
-  e.querySelector('#submit').onclick = async _ => 
+  if (contest.endTime < Date.now()) 
   {
-    console.log('submiting');
+    e.querySelectorAll('.submission').forEach(e => e.classList.add('hidden'))
+  } 
+  else 
+  {
+    // submission
+    e.querySelector('#submit').onclick = async _ => 
+    {
+      console.log('submiting');
 
-    const editorE = document.querySelector(`#problem-${problemId}-box #editor`);
-    const source = ace.edit(editorE).getValue();
-    const lang = document.querySelector(`#problem-${problemId}-box #lang`);
+      const editorE = document.querySelector(`#problem-${problemId}-box #editor`);
+      const source = ace.edit(editorE).getValue();
+      const lang = document.querySelector(`#problem-${problemId}-box #lang`);
 
-    const body = { 
-      language: lang.value,
-      source
-    };
+      const body = { 
+        language: lang.value,
+        source
+      };
 
-    if (!body.language) return alert('no language');
-    if (!body.source) return alert('no source');
+      if (!body.language) return alert('no language');
+      if (!body.source) return alert('no source');
 
-    const options = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    };
+      const options = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      };
 
-    await betterFetch(`/v1/contests/${contestId}/problems/${problemId}/submissions`, options)
-      .then(res => {
-        alert('submitted');
-        window.location.reload();
-      })
-  }
-  
-  // editor
-  const editor = ace.edit(e.querySelector('#editor'), {
-    mode: "ace/mode/c_cpp",
-    selectionStyle: "text"
-  })
+      await betterFetch(`/v1/contests/${contest.id}/problems/${problemId}/submissions`, options)
+        .then(res => {
+          alert('submitted');
+          window.location.reload();
+        })
+    }
+    
+    // editor
+    const editor = ace.edit(e.querySelector('#editor'), {
+      mode: "ace/mode/c_cpp",
+      selectionStyle: "text"
+    })
 
-  e.querySelector('#lang').onchange = e => {
-    let mode;
-    if (e.srcElement.value === 'C++') mode = 'c_cpp';
-    if (e.srcElement.value === 'Python') mode = 'python';
-    editor.session.setMode(`ace/mode/${mode}`);
+    e.querySelector('#lang').onchange = e => {
+      let mode;
+      if (e.srcElement.value === 'C++') mode = 'c_cpp';
+      if (e.srcElement.value === 'Python') mode = 'python';
+      editor.session.setMode(`ace/mode/${mode}`);
+    }
   }
 
   // add
@@ -313,8 +297,7 @@ const changetab = tab => {
   window.history.pushState('','',url.toString())
 }
 
-
-
+let contest;
 const setup = async _ => {
   const params = new URLSearchParams(window.location.search);
 
@@ -322,7 +305,6 @@ const setup = async _ => {
   changetab(params.get('tab'));
 
   // NOTE: If cannot get contest, it doesn't exist yet. notify
-  let contest;
   try {
     contest = await betterFetch(`/v1/contests/${params.get('id')}`, {}, { failable: true });
   } catch (e) {
@@ -407,7 +389,7 @@ const setup = async _ => {
       e.querySelector('#button').onclick = _ => changetab(`problem-${problem.id}`)
 
       // make box
-      problemMakePromises.push(makeProblemElement(contest.id, problem.id))
+      problemMakePromises.push(makeProblemElement(contest, problem.id))
          
       // append
       document.getElementById('problem-list').appendChild(e)
@@ -510,30 +492,18 @@ const setup = async _ => {
       document.querySelector('#submission-box tbody').appendChild(t)
     }
   }
-  
-  // announcements
-  // TODO: FAKE
-  const announcements = []; //await betterFetch(`v1/contests/${contest.id}/announcements`);
-
-  // If there are announcements, clear the 'no announcements' notice
-  if (announcements.length !== 0) 
-    document.querySelector('#announcement-none-notice').remove();
-  
-  for (const { date, problemId, note } of announcements) {
-    const e = document.querySelector('#announcement-box template').content.cloneNode(true);
-
-    e.querySelector('#date').innerText = (new Date(date)).toLocaleString();
-    e.querySelector('#problem').innerText = problem;
-    e.querySelector('#note').innerText = note;
-
-    document.querySelector('#announcement-box tbody').appendChild(e)
-  }
 }
+
+setInterval(_ => {
+  if (!contest) return;
+  const time = new Date(Date.now() - contest.endTime);
+  const str = `${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`;
+  document.getElementById('timer').innerText = str;
+}, 1000);
 
 document.getElementById('nav-home').onclick = _ => changetab('home')
 document.getElementById('nav-ranklist').onclick = _ => changetab('ranklist')
 document.getElementById('nav-submission').onclick = _ => changetab('submission')
-document.getElementById('nav-announcement').onclick = _ => changetab('announcement')
 
 awaitNavBar(setup)
 </script>
