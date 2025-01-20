@@ -1,4 +1,3 @@
-<template id='contest'>
 <div class='p-4 border-solid border-2 border-slate-200 rounded-lg'>
   <div>
     <span id="name" class='text-lg font-bold'></span>
@@ -7,6 +6,9 @@
 
   <div id='desc' class='text-md'></div>
 
+  <div id='timer'>
+    time before start: <span id='timer-text' class='font-bold text-lg'></span>
+  </div>
   <div class='flex gap-8'>
     <a id='unregister' class='hidden underline text-indigo-600'>unregister</a>
     <a id='register' class='hidden underline text-indigo-600'>register</a>
@@ -86,6 +88,22 @@ const getContests = async _ => {
     const present = startTime < Date.now() && endTime > Date.now();
     const past = endTime < Date.now();
     const upcoming = !past && !present;
+
+    // if upcoming show timer
+    if (upcoming) {
+      const timer = e.querySelector('#timer-text');
+      setInterval(_ => {
+        const time = new Date(startTime - Date.now());
+        const s = time.getSeconds().toString().padStart(2, '0');
+        const m = time.getMinutes().toString().padStart(2, '0');
+        const h = time.getHours().toString().padStart(2, '0');
+        const d = Math.floor(time.valueOf() / (24 * 60 * 60 * 1000));
+        const str = d == 0 ? `${h}:${m}:${s}` : `${d}:${h}:${m}:${s}`;
+        timer.innerText = str;
+      }, 1000);
+    } else {
+      e.querySelector('#timer').classList.add('hidden');
+    }
 
     // if logged in, show registration options
     if (g_user) {
