@@ -37,6 +37,7 @@ export async function startJudger (): Promise<void>
     fd.close()
   } catch (err) {
     console.log('testlib.h not found')
+    assert(false)
   }
 
   console.log('CWD: ', process.cwd()); 
