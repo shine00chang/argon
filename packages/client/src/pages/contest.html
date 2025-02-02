@@ -162,6 +162,7 @@
   <select name="lang" id="lang" value="C++17" class='submission input'>
      <option value="C++">C++</option>
      <option value="Python">Python</option>
+     <option value="Java">Java</option>
   </select> <br>
   <div id='editor' class='submission w-full h-72 mt-4'></div>
   <button id='submit' class='submission btn'>submit</button>
@@ -260,6 +261,7 @@ const makeProblemElement = async (contest, problemId, submission) =>
       let mode;
       if (e.srcElement.value === 'C++') mode = 'c_cpp';
       if (e.srcElement.value === 'Python') mode = 'python';
+      if (e.srcElement.value === 'Java') mode = 'java';
       editor.session.setMode(`ace/mode/${mode}`);
     }
   }
@@ -423,7 +425,7 @@ const setup = async _ => {
   {
     document.querySelector('#nav-submission').disabled = false;
     let html = '';
-    for (const { problem, user, createdAt, status, score, testcases, id, log, source, language } of submissions) 
+    for (const { problem, user, createdAt, status, score, testcases, id, log, source, lang } of submissions) 
     {
       const t = document.querySelector('#submission-template').content.cloneNode(true);
       const e = t.querySelector('#row');
@@ -452,10 +454,15 @@ const setup = async _ => {
         b.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
         b.querySelector('#log pre').innerText = log ?? '';
         b.querySelector('#log').classList.remove('hidden');
+        b.querySelector('#log pre').style.color = score == 100 ? 'green' : 'red';
 
         // source
+        let mode;
+        if (lang === 'C++') mode = 'c_cpp';
+        if (lang === 'Python') mode = 'python';
+        if (lang === 'Java') mode = 'java';
         const editor = ace.edit(b.querySelector('#source'), {
-          mode: `ace/mode/${language == 'C++' ? 'c_cpp' : 'python'}`,
+          mode: `ace/mode/${mode}`,
           selectionStyle: "text"
         })
         editor.setValue(source);
@@ -475,6 +482,7 @@ const setup = async _ => {
             result.status == "WA" ? 'red' :
             result.status == "TLE" ? 'red' :
             result.status == "MLE" ? 'red' :
+            result.status == "RE" ? 'red' :
             result.status == "SE" ? 'blue' : 'black';
           
           r.querySelector('#time').innerText = result.wallTime ?? '-';

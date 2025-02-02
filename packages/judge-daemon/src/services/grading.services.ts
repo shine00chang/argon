@@ -1,7 +1,7 @@
 import {
   SandboxStatus, GradingStatus, type GradingTask, type GradingResult
 } from '@argoncs/types'
-import { languageConfigs } from '../../configs/language.configs.js'
+import { languageConfigs } from '@argoncs/common'
 
 import path = require('node:path')
 import { makeExecutable, exec } from '../utils/system.utils.js'
@@ -48,7 +48,7 @@ export async function gradeSubmission ({ task, boxId }: { task: GradingTask, box
   const { time, wallTime, memory } = sandboxResult
   try {
     // Run checker
-    const command = `./checker in.txt ans.txt out.txt`;
+    const command = `./checker in.txt out.txt ans.txt`;
     const result = await runInSandbox({
       task: {
         command,

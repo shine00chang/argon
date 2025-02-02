@@ -654,8 +654,8 @@ export async function contestRoutes (routes: FastifyTypeBox): Promise<void> {
         .then(contest => contest.startTime < Date.now() && contest.endTime > Date.now());
       const tester = request.user.teams[contestId] == undefined;
       const submissions = tester ?
-        await querySubmissions({ query: { contestId, userId: request.user.id } }) :
-        await querySubmissions({ query: { contestId, teamId: request.user.teams[contestId] }, notestcases: contestRunning })
+        await querySubmissions({ query: { contestId, userId: request.user.id }, nomessages: true }) :
+        await querySubmissions({ query: { contestId, teamId: request.user.teams[contestId] }, nomessages: true })
       
       console.log('submissions queried: ', submissions.length);
       return await reply.status(200).send(JSON.stringify(submissions))

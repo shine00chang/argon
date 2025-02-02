@@ -8,7 +8,7 @@ import { BadRequestError, badRequestSchema, PayloadTooLargeError, unauthorizedSc
 export async function polygonRoutes (routes: FastifyTypeBox): Promise<void> {
   await routes.register(multipart.default, {
     limits: {
-      fileSize: 20971520,
+      fileSize: 104857600,
       files: 1
     }
   })
@@ -36,8 +36,13 @@ export async function polygonRoutes (routes: FastifyTypeBox): Promise<void> {
 
       try {
         const archive: MultipartFile | undefined = await request.file()
+
         if (archive === undefined) {
           throw new BadRequestError('No file found in request')
+        }
+
+        if (archive.file.truncated) {
+          throw new PayloadTooLargeError('Package too large');
         }
 
         const problemId = await uploadPolygon({ contestId, replaceId, archive })
@@ -48,8 +53,6 @@ export async function polygonRoutes (routes: FastifyTypeBox): Promise<void> {
           throw new BadRequestError('Request must be multipart')
         } else if (err instanceof routes.multipartErrors.FilesLimitError) {
           throw new PayloadTooLargeError('Too many files in one request')
-        } else if (err instanceof routes.multipartErrors.RequestFileTooLargeError) {
-          throw new PayloadTooLargeError('Testcase too large to be processed')
         } else {
           throw err
         }

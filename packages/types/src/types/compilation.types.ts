@@ -4,7 +4,8 @@ import { type Static, Type } from '@sinclair/typebox'
 export enum SubmissionLang {
   C = 'C',
   CPP = 'C++',
-  Python = 'Python'
+  Python = 'Python',
+  Java = 'Java'
 }
 
 export const LanguageConfigSchema = Type.Object({

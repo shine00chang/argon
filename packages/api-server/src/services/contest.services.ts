@@ -233,6 +233,9 @@ export async function fetchContestRanklist ({ contestId }: { contestId: string }
   */
 
     const ranklist = await teamScoreCollection.aggregate([
+      {
+        $match: { "contestId": contestId }
+      },
       { $lookup: {
         from: 'teams',
         localField: 'id',

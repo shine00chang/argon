@@ -6,8 +6,7 @@ import {
   type Submission,
   type Problem
 } from '@argoncs/types' /*=*/
-import { rabbitMQ, judgerExchange, judgerTasksKey, submissionCollection, teamScoreCollection } from '@argoncs/common'
-import { languageConfigs } from '../../configs/language.configs.js'
+import { rabbitMQ, judgerExchange, judgerTasksKey, submissionCollection, teamScoreCollection, languageConfigs } from '@argoncs/common'
 
 import { nanoid } from 'nanoid'
 import {fetchContestProblem} from './contest.services.js'
@@ -49,8 +48,8 @@ export async function createSubmission (
 }
 
 export async function querySubmissions (
-  { query, notestcases = false }:
-  { query: { problemId?: string, teamId?: string, userId?: string, contestId?: string }, notestcases?: boolean }):
+  { query, nomessages = false }:
+  { query: { problemId?: string, teamId?: string, userId?: string, contestId?: string }, nomessages?: boolean }):
   Promise<any> 
 {
   const submissions = await submissionCollection.aggregate([
@@ -76,9 +75,9 @@ export async function querySubmissions (
     { $set: {
       user: {$arrayElemAt:["$user",0]},
       problem: {$arrayElemAt:["$problem",0]},
-      ...(notestcases ? { testcases: [] } : {})
+      ...(nomessages ? { 'testcases.result.message': '' } : {})
     }},
-    { $unset: [ 'userId', 'problemId' ] },
+    { $unset: [ 'userId', 'problemId', ] },
     { $sort: { createdAt: -1 } }
   ])
     .toArray();

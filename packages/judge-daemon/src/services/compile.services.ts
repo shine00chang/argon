@@ -4,8 +4,7 @@ import { promises as fs } from 'node:fs'
 import { runInSandbox } from './sandbox.services.js'
 
 import { type CompilingTask, SandboxStatus, type CompileSucceeded, type CompileFailed, CompilingStatus, type CompilingCheckerTask, CompilingCheckerResult } from '@argoncs/types'
-import { minio } from '@argoncs/common'
-import { languageConfigs } from '../../configs/language.configs.js'
+import { minio, languageConfigs } from '@argoncs/common'
 
 /*=*/
 
@@ -23,7 +22,7 @@ export async function compileSubmission ({ task, boxId }: { task: CompilingTask,
   const result = await runInSandbox(
     {
       task: {
-        constraints: task.constraints,
+        constraints: config.constraints,
         command,
         stderrPath: 'log.txt',
         env: 'PATH=/bin:/usr/local/bin:/usr/bin'

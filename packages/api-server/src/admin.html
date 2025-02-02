@@ -22,18 +22,22 @@
 
 <h1>Argon Admin</h1>
 
-<input type="text" id="name" placeholder="name" value="shine"> <br>
+<i>name and email are only necessary for signups. </i><br>
+<input type="text" id="name" placeholder="name"> <br>
 <input type="text" id="email" placeholder="email"> <br>
-<input type="text" id="username" placeholder="username" value="shine"> <br>
-<input type="text" id="password" placeholder="password" value="12345678"> <br>
+<hr>
+<input type="text" id="username" placeholder="username"> <br>
+<input type="password" id="password" placeholder="password"> <br>
 <button id="login">login</button>
-<button id="signup">signup</button>
+<button id="signup">signup</button> <br>
 
-<p>UserID: <b id='userId'>NA</b> </p>
-<p>SessionID: <b id='sessionId'>NA</b> </p>
+UserID: <b id='userId'>NA</b> <br>
+SessionID: <b id='sessionId'>NA</b> <br>
 
 
 <h2>Domains</h2>
+Select working domain: <br>
+<i>Only superadmin can create domains.</i> <br>
 <input type="text" id="domain-name" placeholder="new domain">
 <button id='domain-add'>add</button> <br>
 <button id='domain-get'>get</button> <br>
@@ -41,8 +45,15 @@
 <div id='domain-list'>
 </div>
 
-<h2>Perms</h2>
-<input type="text" id="perms-user" placeholder="perms user"><br>
+<h2>Permissions</h2>
+
+View permissions of each user in the domain <br>
+<b>domain.manage</b>: Set domain permissions <br>
+<b>contest.manage</b>: Edit contest <br>
+<b>contest.read</b>: Read contest (access contest via contest ID in query parameters) <br>
+<b>contest.test</b>: Test submissions to contest <br>
+<i>Only domain managers can set permissions</i><br>
+<input type="text" id="perms-user" placeholder="user ID"><br>
 <input type="radio" id="domain.manage" name="perms-radio" value="domain.manage" />
 <label for="domain.manage">Domain Manager</label>
 <br>
@@ -66,22 +77,30 @@
 </div>
 
 <h2>Contests</h2>
+Every field can be updated (That means you must set the fields you didn't intead to change too) <br>
+Also, you can drag the corner of the textarea to expand the editor <br>
+To see statistics and submission on the contest, see <a href='http://13.93.218.61:8000/contest'>the contest pannel</a> <br>
 <input type="text" id="contest-name" placeholder="name"><br>
 <textarea id="contest-description">no description</textarea><br>
 <textarea id="contest-logistics">no rules</textarea><br>
-Start Time (local): 
+Start Time (admin local): 
 <input type="datetime-local" id="contest-startTime" value="2025-01-15T08:30"><br>
-End Time (local):
+End Time (admin local):
 <input type="datetime-local" id="contest-endTime" value="2025-01-15T10:30"><br>
-<button id='contest-add'>add</button> <br>
+<button id='contest-add'>add</button>
+<button id='contest-update'>update</button> <br>
 <button id='contest-get'>get</button> 
 <button id='contest-delete' style='color: red;'>delete</button> <br>
+Publishing makes the contest visible to the public (Testers can see unpublished contests) <br>
 <button id='contest-publish'>publish</button>
 
 <div id='contest-list'>
 </div>
 
 <h2>Problems</h2>
+
+Upload the polygon package (Needs full export) <br>
+"Replace" is essentially an "update" <br>
 <button id='problem-add'>add</button>
 <button id='problem-replace'>replace</button> (zipped package)
 <input type="file" id="problem-input"> <br>
@@ -458,6 +477,39 @@ End Time (local):
         alert('contest created');
         document.getElementById('contest-get').click();
         document.getElementById('problem-get').click();
+      })
+  }
+
+  document.getElementById('contest-update').onclick = async _ => {
+
+    console.log('contest-update');
+
+    if (getContestId() === undefined) return alert('no contest selected');
+
+    const body = {
+      name: document.getElementById('contest-name').value,
+	    path: document.getElementById('contest-name').value,
+	    handle: document.getElementById('contest-name').value,
+	    description: document.getElementById('contest-description').value,
+	    logistics: document.getElementById('contest-logistics').value,
+	    startTime: Date.parse(document.getElementById('contest-startTime').value),
+	    endTime: Date.parse(document.getElementById('contest-endTime').value),
+	    teamSize: 1
+    };
+
+    if (!body.name || !body.path || !body.handle || !body.startTime || !body.endTime)
+      return alert('unfilled fields');
+
+    const options = {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    };
+
+    await betterFetch(`/v1/contests/${getContestId()}`, options)
+      .then(res => {
+        alert('contest update');
+        document.getElementById('contest-get').click();
       })
   }
 
