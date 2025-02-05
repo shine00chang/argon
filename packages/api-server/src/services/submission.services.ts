@@ -75,9 +75,8 @@ export async function querySubmissions (
     { $set: {
       user: {$arrayElemAt:["$user",0]},
       problem: {$arrayElemAt:["$problem",0]},
-      ...(nomessages ? { 'testcases.result.message': '' } : {})
     }},
-    { $unset: [ 'userId', 'problemId', ] },
+    { $unset: [ 'userId', 'problemId' ].concat(nomessages ? [ 'testcases.result.message' ] : []) },
     { $sort: { createdAt: -1 } }
   ])
     .toArray();

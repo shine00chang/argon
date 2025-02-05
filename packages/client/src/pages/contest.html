@@ -432,7 +432,7 @@ const setup = async _ => {
 
       // row
       e.querySelector('#date').innerText = (new Date(createdAt)).toLocaleString();
-      e.querySelector('#user').innerText = user.name;
+      e.querySelector('#user').innerText = user.username;
       e.querySelector('#problem').innerText = problem.name;
       e.querySelector('#status').innerText = status;
       e.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
@@ -447,7 +447,7 @@ const setup = async _ => {
 
         // set props
         b.querySelector('#id').innerText = id;
-        b.querySelector('#author').innerText = user.name;
+        b.querySelector('#author').innerText = user.username;
         b.querySelector('#date').innerText = (new Date(createdAt)).toLocaleString();
         b.querySelector('#problem').innerText = problem.name;
         b.querySelector('#status').innerText = status; 
