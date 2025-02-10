@@ -36,7 +36,7 @@ export const languageConfigs = {
     binaryFile: 'run.py',
     displayName: 'Python 3',
     compileCommand: '/usr/bin/cp {src_path} {binary_path}',
-    executeCommand: '/usr/bin/python3 {binary_path}',
+    executeCommand: '/usr/bin/pypy3 {binary_path}',
     compileConstraints: {
       time: 1000,
       memory: 262144,
