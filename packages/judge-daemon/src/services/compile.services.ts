@@ -22,7 +22,7 @@ export async function compileSubmission ({ task, boxId }: { task: CompilingTask,
   const result = await runInSandbox(
     {
       task: {
-        constraints: config.constraints,
+        constraints: config.compileConstraints,
         command,
         stderrPath: 'log.txt',
         env: 'PATH=/bin:/usr/local/bin:/usr/bin'

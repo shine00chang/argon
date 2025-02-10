@@ -40,7 +40,7 @@ export async function createSubmission (
     type: JudgerTaskType.Compiling,
     source: submission.source,
     language: submission.language,
-    constraints: languageConfigs[submission.language].constraints
+    constraints: languageConfigs[submission.language].compileConstraints
   }
   rabbitMQ.publish(judgerExchange, judgerTasksKey, Buffer.from(JSON.stringify(task)))
 
@@ -117,7 +117,7 @@ export async function rejudgeProblem ({ problemId }: { problemId: string }):
       type: JudgerTaskType.Compiling,
       source,
       language,
-      constraints: languageConfigs[language].constraints
+      constraints: languageConfigs[language].compileConstraints
     }
     rabbitMQ.publish(judgerExchange, judgerTasksKey, Buffer.from(JSON.stringify(task)))
   }

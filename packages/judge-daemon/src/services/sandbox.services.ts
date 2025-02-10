@@ -26,6 +26,10 @@ function metaPath (boxId: number): string {
   return process.env.BOX_META_DIR + `/meta-${boxId}.txt`;
 }
 
+function boxPath (boxId: number): string {
+  return `/var/local/lib/isolate/${boxId}/box/`;
+}
+
 function parseMeta (metaStr: string): SandboxMeta {
   const result: SandboxMeta = {}
   metaStr.split('\n').forEach(row => {
@@ -124,7 +128,8 @@ export async function runInSandbox ({ task, boxId }: { task: SandboxTask, boxId:
   }
   command += ` -- ${task.command}`
 
-  console.log(command);
+  console.log('constraints: ', task.constraints);
+  console.log('command: ', command);
   try {
     await exec(command)
     console.log('execution passed')
@@ -135,6 +140,28 @@ export async function runInSandbox ({ task, boxId }: { task: SandboxTask, boxId:
       const result = parseMeta(meta)
       console.log('meta: ', result)
 
+      let err;
+      if (task.stderrPath != null) {
+        let fd;
+        try {
+          fd = await fs.open(boxPath(boxId) + 'err.txt');
+          const chunks = [];
+          for await (let chunk of fd.createReadStream({ start: 0, end: 200 }))
+            //@ts-ignore
+            chunks.push(chunk);
+          
+          err = await Buffer.concat(chunks).toString();
+        } catch (e) {
+          err = 'error on reading stderr file: ' + e;
+        } finally {
+          await fd?.close()
+        }
+      } else {
+        err = 'no stderr'
+      }
+
+      console.log('stderr: ', err)
+
       switch (result.status) {
         case 'XX':
           return {
@@ -144,7 +171,9 @@ export async function runInSandbox ({ task, boxId }: { task: SandboxTask, boxId:
         case 'RE':
           return {
             status: SandboxStatus.RuntimeError,
-            message: result.message ?? 'Isolate threw runtime error'
+            message: 
+              (result.message ?? 'Isolate threw runtime error') +
+              (err ?? 'Nothing in stderr')
           }
         case 'CG':
           if (
@@ -184,6 +213,7 @@ export async function runInSandbox ({ task, boxId }: { task: SandboxTask, boxId:
           }
       }
     } catch (err) {
+      console.log('Meta file does not exist on abnormal termination')
       if (err?.code === 'ENONET') {
         return {
           status: SandboxStatus.SystemError,

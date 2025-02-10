@@ -35,15 +35,20 @@ export async function gradeSubmission ({ task, boxId }: { task: GradingTask, box
   const sandboxResult = await runInSandbox({
     task: {
       command,
-      constraints: task.constraints,
+      constraints: {
+        ...config.runConstraints,
+        ...task.constraints,
+      },
       inputPath: 'in.txt',
-      outputPath: 'out.txt'
+      outputPath: 'out.txt',
+      stderrPath: 'err.txt',
     },
     boxId
   })
 
-  if (sandboxResult.status !== SandboxStatus.Succeeded) 
+  if (sandboxResult.status !== SandboxStatus.Succeeded) {
     return sandboxResult
+  }
 
   const { time, wallTime, memory } = sandboxResult
   try {
