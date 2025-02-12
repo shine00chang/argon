@@ -19,7 +19,7 @@ export const languageConfigs = {
     srcFile: 'program.cpp',
     binaryFile: 'a.out',
     displayName: 'C++20',
-    compileCommand: '/usr/bin/g++ -o2 -w -fmax-errors=3 -std=c++20 {src_path} -lm -o {binary_path}',
+    compileCommand: '/usr/bin/g++ -Wall -static -O2 --std=c++20 {src_path} -lm -o {binary_path}',
     executeCommand: './{binary_path}',
     compileConstraints: {
       time: 5000,
