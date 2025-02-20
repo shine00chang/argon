@@ -67,7 +67,7 @@ export async function loadFastify (testing = false): Promise<FastifyTypeBox> {
     },
   })
   await app.register(fastifyCors, {
-    origin: [/\.teamscode\.org$/, /\.argoncs\.io$/, /localhost/, /13.93.218.61/, /13.87.245.226/],
+    origin: [/\.teamscode\.org$/, /\.argoncs\.io$/, /localhost/, /13.64.130.192/],
     allowedHeaders: ['Content-Type', 'Set-Cookie'],
     credentials: true
   })

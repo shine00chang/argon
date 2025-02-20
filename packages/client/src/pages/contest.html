@@ -196,6 +196,7 @@ const makeProblemElement = async (contest, problemId, submission) =>
       .replaceAll(/\\item(.*)\r?\n/g, "<li>$1</li>")
       .replaceAll(/\\t{(.*?)}/g, "<code>$1</code>")
       .replaceAll(/\\bf{(.*?)}/g, "<b>$1</b>")
+      .replaceAll(/\\textit{(.*?)}/g, "<i>$1</i>")
       .replaceAll(/\r?\n/g, "<br style='line-height: 0.7rem'>")
 
   const e = document.querySelector('#problem-box-template').content.cloneNode(true);

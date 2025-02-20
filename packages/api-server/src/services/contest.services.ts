@@ -162,6 +162,9 @@ export async function removeProblemFromContest ({ contestId, problemId }: { cont
         throw new NotFoundError('Problem not found')
       }
 
+      // remove submissions
+      await submissionCollection.deleteMany({ problemId });
+
       // remove from list
       await contestProblemListCollection.updateOne(
         { id: contestId },
