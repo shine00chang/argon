@@ -67,7 +67,7 @@ export async function loadFastify (testing = false): Promise<FastifyTypeBox> {
     },
   })
   await app.register(fastifyCors, {
-    origin: [/\.teamscode\.org$/, /\.argoncs\.io$/, /localhost/, /13.64.130.192/],
+    origin: [/\.teamscode\.org$/, /\.joincpi\.org/, /localhost/, /13.64.130.192/],
     allowedHeaders: ['Content-Type', 'Set-Cookie'],
     credentials: true
   })
@@ -117,7 +117,7 @@ export async function loadFastify (testing = false): Promise<FastifyTypeBox> {
 export async function startAPIServer (): Promise<void> {
   const app = await loadFastify()
   try {
-    const port: number = parseInt(process.env.API_SERVER_PORT ?? '8000')
+    const port: number = parseInt(process.env.API_SERVER_PORT ?? '8080')
     await app.listen({ port, host: '0.0.0.0' })
   } catch (err) {
     sentry.captureException(err)

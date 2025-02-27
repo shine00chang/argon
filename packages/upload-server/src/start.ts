@@ -49,7 +49,7 @@ export async function startUploadServer (): Promise<void> {
   await app.register(fastifyAuth)
   await app.register(fastifySensible)
   await app.register(fastifyCors, {
-    origin: [/\.teamscode\.org$/, /\.argoncs\.io$/, 'http://localhost:8000', 'http://13.64.130.192:8000'],
+    origin: [/\.teamscode\.org$/, /\.joincpi\.org$/, /localhost/, /13.64.130.192/],
     allowedHeaders: ['Content-Type', 'Set-Cookie'],
     credentials: true
   })
@@ -58,7 +58,7 @@ export async function startUploadServer (): Promise<void> {
   await app.register(polygonRoutes, { prefix: '/polygon' })
 
   try {
-    const port: number = parseInt(process.env.UPLOAD_SERVER_PORT ?? '8001')
+    const port: number = parseInt(process.env.UPLOAD_SERVER_PORT ?? '8880')
     await app.listen({ port, host: '0.0.0.0' })
   } catch (err) {
     sentry.captureException(err)
