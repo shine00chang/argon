@@ -5,7 +5,11 @@ import fs from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 
 const fastify = Fastify({
-  logger: true
+  logger: true,
+  https: {
+    key: await fs.readFile(process.env.CERTKEY),
+    cert: await fs.readFile(process.env.CERT),
+  },
 })
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -35,7 +39,7 @@ fastify.get('/:page', async function handler (request, reply) {
 
 // Run the server!
 fastify.listen(
-  { port: process.env.CLIENT_PORT ?? '8080', host: '0.0.0.0' },
+  { port: process.env.CLIENT_PORT ?? '443', host: '0.0.0.0' },
   function (err, address) {
     if (err) {
       fastify.log.error(err)

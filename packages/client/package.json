@@ -9,7 +9,9 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "dev": "yarn build && node start.js",
+    "dev": "bash -c 'source ../../set-env.sh && yarn build && node start.js'",
+    "http-redirect": "bash -c 'source ../../set-env.sh && node http-redirecter.js'",
+    "https-redirect": "bash -c 'source ../../set-env.sh && node https-redirecter.js'",
     "build": "node build.js && yarn style",
     "style": "yarn run tailwindcss -i ./styles/app.css -o ./build/output.css"
   },
