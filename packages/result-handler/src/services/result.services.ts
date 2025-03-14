@@ -121,7 +121,7 @@ export async function completeGrading (submissionId: string, log?: string): Prom
     (passed ? 100 : 0);
   const was = await submissionCollection.find({ problemId, teamId, score: { $ne: 100 }, createdAt: { $lt: createdAt } }).count();
   const penalty = passed ?
-    was * 10 + (createdAt - contest.startTime) / 3600 : 0;
+    Math.floor(was * 10 + (createdAt - contest.startTime) / 6000) : 0;
    log = passed ?
     `AC, passed ${passes} cases` :
     `WA, passed ${passes}/${testcases.length} cases`;

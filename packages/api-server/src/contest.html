@@ -30,7 +30,7 @@ SessionID: <b id='sessionId'>NA</b> <br>
     <table>
       <thead>
         <th>rank</th>
-        <th>name</th>
+        <th>username</th>
         <th>score</th>
         <th>penalty</th>
 
@@ -45,7 +45,7 @@ SessionID: <b id='sessionId'>NA</b> <br>
       <template id='ranklist-row-template'>
       <tr id='row'>
         <td id='rank'></td>
-        <td id='name'></td>
+        <td id='username'></td>
         <td id='score'></td>
         <td id='penalty'></td>
         <template id='problem-score-template'>
@@ -255,19 +255,19 @@ document.getElementById('ranklist-get').onclick = async _ => {
   }
 
   // ranklist table body
-  for (const [rank, { name, id, totalScore: score, totalPenalty: penalty, scores }] of ranklist.entries()) {
+  for (const [rank, { username, id, totalScore: score, totalPenalty: penalty, scores }] of ranklist.entries()) {
     const e = document.querySelector('#ranklist-row-template').content.cloneNode(true);
 
     e.querySelector('#rank').innerText = rank+1;
-    e.querySelector('#name').innerText = name;
-    e.querySelector('#score').innerText = score.toFixed(2);
-    e.querySelector('#penalty').innerText = penalty.toFixed(2);
+    e.querySelector('#username').innerText = username;
+    e.querySelector('#score').innerText = score !== undefined ? score : '-';
+    e.querySelector('#penalty').innerText = penalty !== undefined ? penalty : '-';
 
     // problem status
     for (const problem of problems) {
       const q = e.querySelector('template').content.cloneNode(true);
       q.querySelector('td').id = problem.id 
-      q.querySelector('#status').innerText = scores[problem.id] !== undefined ? scores[problem.id].toFixed(2) : '-';
+      q.querySelector('#status').innerText = scores[problem.id] !== undefined ? scores[problem.id] : '-';
 
       e.querySelector('tr').appendChild(q);
     }
@@ -305,9 +305,9 @@ document.getElementById('submission-get').onclick = async _ => {
     // row
     e.querySelector('#date').innerText = (new Date(createdAt)).toLocaleString();
     e.querySelector('#problem').innerText = problem.name;
-    e.querySelector('#user').innerText = user.name;
+    e.querySelector('#user').innerText = user.username;
     e.querySelector('#status').innerText = status;
-    e.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
+    e.querySelector('#score').innerText = score !== undefined ? score : '-';
 
     // onclick: toggle details
     e.onclick = _ => {
@@ -322,7 +322,7 @@ document.getElementById('submission-get').onclick = async _ => {
       b.querySelector('#date').innerText = (new Date(createdAt)).toLocaleString();
       b.querySelector('#problem').innerText = problem.name;
       b.querySelector('#status').innerText = status; 
-      b.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
+      b.querySelector('#score').innerText = score !== undefined ? score : '-';
       b.querySelector('#log pre').innerText = log ?? '';
       b.querySelector('#log').classList.remove('hidden');
 

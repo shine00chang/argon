@@ -357,14 +357,14 @@ const setup = async _ => {
 
       e.querySelector('#rank').innerText = rank+1;
       e.querySelector('#name').innerText = username;
-      e.querySelector('#score').innerText = score.toFixed(2);
-      e.querySelector('#penalty').innerText = penalty.toFixed(2);
+      e.querySelector('#score').innerText = score;
+      e.querySelector('#penalty').innerText = penalty;
 
       // problem status
       for (const problem of problems) {
         const q = e.querySelector('template').content.cloneNode(true);
         q.querySelector('td').id = problem.id 
-        q.querySelector('#status').innerText = scores[problem.id] !== undefined ? scores[problem.id].toFixed(2) : '-';
+        q.querySelector('#status').innerText = scores[problem.id] !== undefined ? scores[problem.id] : '-';
 
         e.querySelector('tr').appendChild(q);
       }
@@ -441,7 +441,7 @@ const setup = async _ => {
       e.querySelector('#user').innerText = user.username;
       e.querySelector('#problem').innerText = problem.name;
       e.querySelector('#status').innerText = status;
-      e.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
+      e.querySelector('#score').innerText = score !== undefined ? score : '-';
 
       // onclick: toggle details
       e.onclick = _ => {
@@ -457,7 +457,7 @@ const setup = async _ => {
         b.querySelector('#date').innerText = (new Date(createdAt)).toLocaleString();
         b.querySelector('#problem').innerText = problem.name;
         b.querySelector('#status').innerText = status; 
-        b.querySelector('#score').innerText = score !== undefined ? score.toFixed(2) : '-';
+        b.querySelector('#score').innerText = score !== undefined ? score : '-';
         b.querySelector('#log pre').innerText = log ?? '';
         b.querySelector('#log').classList.remove('hidden');
         b.querySelector('#log pre').style.color = score == 100 ? 'green' : 'red';
