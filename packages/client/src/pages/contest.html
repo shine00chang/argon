@@ -197,6 +197,7 @@ const makeProblemElement = async (contest, problemId, submission) =>
       .replaceAll(/\\t{(.*?)}/g, "<code>$1</code>")
       .replaceAll(/\\bf{(.*?)}/g, "<b>$1</b>")
       .replaceAll(/\\textit{(.*?)}/g, "<i>$1</i>")
+      .replaceAll(/\\textbf{(.*?)}/g, "<b>$1</b>")
       .replaceAll(/\r?\n/g, "<br style='line-height: 0.7rem'>")
 
   const e = document.querySelector('#problem-box-template').content.cloneNode(true);
@@ -351,11 +352,11 @@ const setup = async _ => {
     }
 
     // ranklist table body
-    for (const [rank, { name, id, totalScore: score, totalPenalty: penalty, scores }] of ranklist.entries()) {
+    for (const [rank, { username, id, totalScore: score, totalPenalty: penalty, scores }] of ranklist.entries()) {
       const e = document.querySelector('#ranklist-row-template').content.cloneNode(true);
 
       e.querySelector('#rank').innerText = rank+1;
-      e.querySelector('#name').innerText = name;
+      e.querySelector('#name').innerText = username;
       e.querySelector('#score').innerText = score.toFixed(2);
       e.querySelector('#penalty').innerText = penalty.toFixed(2);
 

@@ -207,7 +207,7 @@ export async function fetchContestParticipants ({ contestId }: { contestId: stri
     }},
     { $project: {
       id: '$user.id',
-      name: '$user.nam',
+      name: '$user.name',
       year: '$user.year',
       email: '$user.email',
       username:'$user.username',
@@ -270,7 +270,7 @@ export async function fetchContestRanklist ({ contestId }: { contestId: string }
       }},
       { $set: { 
         userId: "$user.id", 
-        name: "$user.name" 
+        username: "$user.username" 
       }},
       { $project: { 
         _id: false, 

@@ -10,13 +10,22 @@ import { heartbeatRoutes } from './routes/heartbeat.routes.js'
 import { connectCacheRedis, connectMinIO, connectMongoDB, connectRabbitMQ, sentry } from '@argoncs/common'
 
 import fastifySensible from '@fastify/sensible'
-import assert from 'assert'
 import { polygonRoutes } from './routes/polygon.routes.js'
+import assert from 'assert'
+import fs from 'node:fs/promises'
+
+
+assert(process.env.CERTKEY != null)
+assert(process.env.CERT != null)
 
 const app = fastify({
   logger: {
     enabled: true
-  }
+  },
+  https: {
+    key: await fs.readFile(process.env.CERTKEY),
+    cert: await fs.readFile(process.env.CERT),
+  },
 })
 
 sentry.init({
@@ -49,7 +58,7 @@ export async function startUploadServer (): Promise<void> {
   await app.register(fastifyAuth)
   await app.register(fastifySensible)
   await app.register(fastifyCors, {
-    origin: [/\.teamscode\.org$/, /\.joincpi\.org$/, /localhost/, /13.64.130.192/],
+    origin: [/\.teamscode\.org/, /\.joincpi\.org/, /localhost/, /13.64.130.192/],
     allowedHeaders: ['Content-Type', 'Set-Cookie'],
     credentials: true
   })

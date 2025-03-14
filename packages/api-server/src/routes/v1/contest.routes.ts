@@ -280,7 +280,7 @@ async function contestTeamRoutes (teamRoutes: FastifyTypeBox): Promise<void> {
         }
       },
       onRequest: [userAuthHook, teamRoutes.auth([
-        [hasNoPrivilege, contestPublished, contestNotBegan, hasVerifiedEmail]
+        [hasNoPrivilege, contestPublished, hasVerifiedEmail]
       ]) as any]
     },
     async (request, reply) => {

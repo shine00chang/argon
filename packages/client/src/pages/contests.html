@@ -108,8 +108,8 @@ const getContests = async _ => {
 
     // if logged in, show registration options
     if (g_user) {
-      // if not registered and upcoming, show registration button
-      if (!registered && upcoming)
+      // if not registered and not past, show registration button
+      if (!registered && !past)
         e.querySelector('#register').classList.remove('hidden')
 
       // if registered, indicate so.
